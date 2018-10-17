@@ -14,10 +14,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
-#ifndef EXOSPHERE_VERSION_H
-#define EXOSPHERE_VERSION_H
+#ifndef ATMOSPHERE_VERSION_H
+#define ATMOSPHERE_VERSION_H
 
-#define EXOSPHERE_RELEASE_VERSION_MAJOR 0
-#define EXOSPHERE_RELEASE_VERSION_MINOR 1
+#define ATMOSPHERE_RELEASE_VERSION_MAJOR    0
+#define ATMOSPHERE_RELEASE_VERSION_MINOR    7
+#define ATMOSPHERE_RELEASE_VERSION_MICRO    0
 
 #endif

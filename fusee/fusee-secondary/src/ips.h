@@ -14,11 +14,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
-#ifndef FUSEE_KERNEL_PATCHES_H
-#define FUSEE_KERNEL_PATCHES_H
+#ifndef FUSEE_IPS_H
+#define FUSEE_IPS_H
 
 #include "utils.h"
+#include "kip.h"
+#include <stdint.h>
 
-void package2_patch_kernel(void *kernel, size_t kernel_size, bool is_sd_kernel);
+void apply_kernel_ips_patches(void *kernel, size_t kernel_size);
+kip1_header_t *apply_kip_ips_patches(kip1_header_t *kip, size_t kip_size);
 
 #endif
