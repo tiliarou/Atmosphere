@@ -201,19 +201,66 @@ Result Utils::OpenRomFSDir(FsFileSystem *fs, u64 title_id, const char *path, FsD
     return fsFsOpenDirectory(fs, safe_path, FS_DIROPEN_DIRECTORY | FS_DIROPEN_FILE, out);
 }
 
-Result Utils::HasSdRomfsContent(u64 title_id, bool *out) {
-    Result rc;
-    FsDir dir;
-    if (R_FAILED((rc = Utils::OpenRomFSSdDir(title_id, "", &dir)))) {
-        return rc;
+bool Utils::HasSdRomfsContent(u64 title_id) {
+    /* Check for romfs.bin. */
+    FsFile data_file;
+    if (R_SUCCEEDED(Utils::OpenSdFileForAtmosphere(title_id, "romfs.bin", FS_OPEN_READ, &data_file))) {
+        fsFileClose(&data_file);
+        return true;
     }
+    
+    /* Check for romfs folder with non-zero content. */
+    FsDir dir;
+    if (R_FAILED(Utils::OpenRomFSSdDir(title_id, "", &dir))) {
+        return false;
+    }
+    ON_SCOPE_EXIT {
+        fsDirClose(&dir);
+    };
     
     FsDirectoryEntry dir_entry;
     u64 read_entries;
-    if (R_SUCCEEDED((rc = fsDirRead(&dir, 0, &read_entries, 1, &dir_entry)))) {
-        *out = (read_entries == 1);
+    return R_SUCCEEDED(fsDirRead(&dir, 0, &read_entries, 1, &dir_entry)) && read_entries == 1;
+}
+
+Result Utils::SaveSdFileForAtmosphere(u64 title_id, const char *fn, void *data, size_t size) {
+    if (!IsSdInitialized()) {
+        return 0xFA202;
     }
-    fsDirClose(&dir);
+    
+    Result rc = 0;
+    
+    char path[FS_MAX_PATH];
+    if (*fn == '/') {
+        snprintf(path, sizeof(path), "/atmosphere/titles/%016lx%s", title_id, fn);
+    } else {
+        snprintf(path, sizeof(path), "/atmosphere/titles/%016lx/%s", title_id, fn);
+    }
+    
+    /* Unconditionally create. */
+    FsFile f;
+    fsFsCreateFile(&g_sd_filesystem, path, size, 0);
+    
+    /* Try to open. */
+    rc = fsFsOpenFile(&g_sd_filesystem, path, FS_OPEN_READ | FS_OPEN_WRITE, &f);
+    if (R_FAILED(rc)) {
+        return rc;
+    }
+    
+    /* Always close, if we opened. */
+    ON_SCOPE_EXIT {
+        fsFileClose(&f);
+    };
+    
+    /* Try to make it big enough. */
+    rc = fsFileSetSize(&f, size);
+    if (R_FAILED(rc)) {
+        return rc;
+    }
+    
+    /* Try to write the data. */
+    rc = fsFileWrite(&f, 0, data, size);
+    
     return rc;
 }
 
