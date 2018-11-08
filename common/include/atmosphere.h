@@ -14,20 +14,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
-#pragma once
+#ifndef ATMOSPHERE_H
+#define ATMOSPHERE_H
 
-#include "stratosphere/version_check.hpp"
-#include "stratosphere/scope_guard.hpp"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "stratosphere/hossynch.hpp"
-#include "stratosphere/message_queue.hpp"
-#include "stratosphere/iwaitable.hpp"
-#include "stratosphere/event.hpp"
+#include "atmosphere/version.h"
 
-#include "stratosphere/waitable_manager.hpp"
+#ifdef __cplusplus
+}
+#endif
 
-#include "stratosphere/ipc.hpp"
-
-#include "stratosphere/mitm.hpp"
-
-#include "stratosphere/services.hpp"
+#endif
