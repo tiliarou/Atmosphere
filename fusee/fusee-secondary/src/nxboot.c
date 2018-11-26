@@ -76,18 +76,30 @@ static uint32_t nxboot_get_target_firmware(const void *package1loader) {
             return EXOSPHERE_TARGET_FIRMWARE_400;
         case 0x0B:          /* 5.0.0 - 5.1.0 */
             return EXOSPHERE_TARGET_FIRMWARE_500;
-        case 0x0E:          /* 6.0.0 */
-            return EXOSPHERE_TARGET_FIRMWARE_600;
+        case 0x0E: {        /* 6.0.0 - 6.2.0 */
+            if (memcmp(package1loader_header->build_timestamp, "20180802", 8) == 0) {
+                return EXOSPHERE_TARGET_FIRMWARE_600;
+            } else if (memcmp(package1loader_header->build_timestamp, "20181107", 8) == 0) {
+                return EXOSPHERE_TARGET_FIRMWARE_620;
+            } else {
+                fatal_error("[NXBOOT]: Unable to identify package1!\n");
+            }
+        }
         default:
             return 0;
     }
 }
 
-static void nxboot_configure_exosphere(uint32_t target_firmware) {
+static void nxboot_configure_exosphere(uint32_t target_firmware, unsigned int keygen_type) {
     exosphere_config_t exo_cfg = {0};
 
     exo_cfg.magic = MAGIC_EXOSPHERE_BOOTCONFIG;
     exo_cfg.target_firmware = target_firmware;
+    if (keygen_type) {
+        exo_cfg.flags = EXOSPHERE_FLAGS_DEFAULT | EXOSPHERE_FLAG_PERFORM_620_KEYGEN;
+    } else {
+        exo_cfg.flags = EXOSPHERE_FLAGS_DEFAULT;
+    }
 
     if (ini_parse_string(get_loader_ctx()->bct0, exosphere_ini_handler, &exo_cfg) < 0) {
         fatal_error("[NXBOOT]: Failed to parse BCT.ini!\n");
@@ -260,11 +272,18 @@ uint32_t nxboot_main(void) {
         fatal_error("[NXBOOT]: Couldn't parse boot0: %s!\n", strerror(errno));
     }
     fclose(boot0);
+    
+    /* Find the system's target firmware. */
+    uint32_t target_firmware = nxboot_get_target_firmware(package1loader);
+    if (!target_firmware)
+        fatal_error("[NXBOOT]: Failed to detect target firmware!\n");
+    else
+        print(SCREEN_LOG_LEVEL_INFO, "[NXBOOT]: Detected target firmware %ld!\n", target_firmware);
 
     /* Read the TSEC firmware from a file, otherwise from PK1L. */
     if (loader_ctx->tsecfw_path[0] != '\0') {
         tsec_fw_size = get_file_size(loader_ctx->tsecfw_path);
-        if ((tsec_fw_size != 0) && (tsec_fw_size != 0xF00)) {
+        if ((tsec_fw_size != 0) && (tsec_fw_size != 0xF00 && tsec_fw_size != 0x2900)) {
             fatal_error("[NXBOOT]: TSEC firmware from %s has a wrong size!\n", loader_ctx->tsecfw_path);
         } else if (tsec_fw_size == 0) {
             fatal_error("[NXBOOT]: Could not read the TSEC firmware from %s!\n", loader_ctx->tsecfw_path);
@@ -280,33 +299,31 @@ uint32_t nxboot_main(void) {
             fatal_error("[NXBOOT]: Could not read the TSEC firmware from %s!\n", loader_ctx->tsecfw_path);
         }
     } else {
-        tsec_fw_size = package1_get_tsec_fw(&tsec_fw, package1loader, package1loader_size);
-        if (tsec_fw_size == 0) {
+        if (!package1_get_tsec_fw(&tsec_fw, package1loader, package1loader_size)) {
             fatal_error("[NXBOOT]: Failed to read the TSEC firmware from Package1loader!\n");
+        }
+        if (target_firmware >= EXOSPHERE_TARGET_FIRMWARE_620) {
+            tsec_fw_size = 0x2900;
+        } else {
+            tsec_fw_size = 0xF00;
         }
     }
     
-    /* Find the system's target firmware. */
-    uint32_t target_firmware = nxboot_get_target_firmware(package1loader);
-    if (!target_firmware)
-        fatal_error("[NXBOOT]: Failed to detect target firmware!\n");
-    else
-        print(SCREEN_LOG_LEVEL_INFO, "[NXBOOT]: Detected target firmware %ld!\n", target_firmware);
-    
     print(SCREEN_LOG_LEVEL_MANDATORY, "[NXBOOT]: Loaded firmware from eMMC...\n");
 
+    /* Derive keydata. */
+    unsigned int keygen_type = 0;
+    if (derive_nx_keydata(target_firmware, g_keyblobs, available_revision, tsec_fw, tsec_fw_size, &keygen_type) != 0) {
+        fatal_error("[NXBOOT]: Key derivation failed!\n");
+    }
+
     /* Setup boot configuration for Exosphère. */
-    nxboot_configure_exosphere(target_firmware);
+    nxboot_configure_exosphere(target_firmware, keygen_type);
 
     /* Initialize Boot Reason on older firmware versions. */
     if (MAILBOX_EXOSPHERE_CONFIGURATION->target_firmware < EXOSPHERE_TARGET_FIRMWARE_400) {
         print(SCREEN_LOG_LEVEL_INFO, "[NXBOOT]: Initializing Boot Reason...\n");
         nxboot_set_bootreason();
-    }
-
-    /* Derive keydata. */
-    if (derive_nx_keydata(MAILBOX_EXOSPHERE_CONFIGURATION->target_firmware, g_keyblobs, available_revision, tsec_fw, tsec_fw_size) != 0) {
-        fatal_error("[NXBOOT]: Key derivation failed!\n");
     }
 
     /* Read the warmboot firmware from a file, otherwise from PK1. */
