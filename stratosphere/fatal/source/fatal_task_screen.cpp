@@ -210,7 +210,17 @@ Result ShowFatalTask::ShowFatal() {
     FontManager::AddSpacingLines(0.5f);
     FontManager::PrintFormatLine(u8"Firmware: %s (Atmosphère %u.%u.%u-%s)", GetFatalConfig()->firmware_version.display_version, CURRENT_ATMOSPHERE_VERSION, GetAtmosphereGitRevision());
     FontManager::AddSpacingLines(1.5f);
-    FontManager::Print(config->error_desc);
+    if (this->ctx->error_code != 0xCAFEF) {
+        FontManager::Print(config->error_desc);
+    } else {
+        /* Print a special message for atmosphere version mismatch. */
+        FontManager::Print(u8"Atmosphère version mismatch detected.\n\n"
+                           u8"Please press the POWER Button to restart the console, or a VOL button\n"
+                           u8"to restart the console in RCM mode. If you are unable to restart the\n"
+                           u8"console, hold the POWER Button for 12 seconds to turn the console off.\n\n"
+                           u8"Please ensure that all Atmosphère components are updated.\n"
+                           u8"github.com/Atmosphere-NX/Atmosphere/releases\n");
+    }
     
     /* Add a line. */
     for (size_t x = 32; x < FatalScreenWidth - 32; x++) {
