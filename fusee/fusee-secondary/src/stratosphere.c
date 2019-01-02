@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <dirent.h>
+#include <sys/stat.h>
 #include "exocfg.h"
 #include "utils.h"
 #include "package2.h"
@@ -62,7 +63,7 @@ ini1_header_t *stratosphere_get_ini1(uint32_t target_firmware) {
         return g_stratosphere_ini1;
     }
 
-    if (target_firmware <= EXOSPHERE_TARGET_FIRMWARE_100) {
+    if (target_firmware <= ATMOSPHERE_TARGET_FIRMWARE_100) {
         boot_kip = boot_100_kip;
         boot_kip_size = boot_100_kip_size;
     } else {
