@@ -14,20 +14,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
+#pragma once
 #include <switch.h>
 #include <stratosphere.hpp>
-#include "pm_boot_mode.hpp"
 
-static bool g_is_maintenance_boot = false;
 
-void BootModeService::GetBootMode(Out<u32> out) {
-    out.SetValue(g_is_maintenance_boot);
-}
+class SettingsItemManager {
+    public:
+        static constexpr size_t MaxNameLength = 64; 
+        static constexpr size_t MaxKeyLength = 64;
+    public:
+        static Result ValidateName(const char *name, size_t max_size);
+        static Result ValidateName(const char *name);
+        
+        static Result ValidateKey(const char *key, size_t max_size);
+        static Result ValidateKey(const char *key);
 
-void BootModeService::SetMaintenanceBoot() {
-    g_is_maintenance_boot = true;
-}
-
-void BootModeService::SetMaintenanceBootForEmbeddedBoot2() {
-    g_is_maintenance_boot = true;
-}
+        static void RefreshConfiguration();
+        static Result GetValueSize(const char *name, const char *key, u64 *out_size);
+        static Result GetValue(const char *name, const char *key, void *out, size_t max_size, u64 *out_size);
+};

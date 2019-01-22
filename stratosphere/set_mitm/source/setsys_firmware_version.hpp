@@ -14,20 +14,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
+#pragma once
 #include <switch.h>
 #include <stratosphere.hpp>
-#include "pm_boot_mode.hpp"
 
-static bool g_is_maintenance_boot = false;
-
-void BootModeService::GetBootMode(Out<u32> out) {
-    out.SetValue(g_is_maintenance_boot);
-}
-
-void BootModeService::SetMaintenanceBoot() {
-    g_is_maintenance_boot = true;
-}
-
-void BootModeService::SetMaintenanceBootForEmbeddedBoot2() {
-    g_is_maintenance_boot = true;
-}
+class VersionManager {
+    public:
+        static Result GetFirmwareVersion(u64 title_id, SetSysFirmwareVersion *out);
+};

@@ -16,18 +16,18 @@
  
 #include <switch.h>
 #include <stratosphere.hpp>
-#include "pm_boot_mode.hpp"
+#include "sm_dmnt_service.hpp"
+#include "sm_registration.hpp"
 
-static bool g_is_maintenance_boot = false;
-
-void BootModeService::GetBootMode(Out<u32> out) {
-    out.SetValue(g_is_maintenance_boot);
+Result DmntService::AtmosphereGetRecord(Out<SmServiceRecord> record, SmServiceName service) {
+    return Registration::GetServiceRecord(smEncodeName(service.name), record.GetPointer());
 }
 
-void BootModeService::SetMaintenanceBoot() {
-    g_is_maintenance_boot = true;
+void DmntService::AtmosphereListRecords(OutBuffer<SmServiceRecord> records, Out<u64> out_count, u64 offset) {
+    Registration::ListServiceRecords(offset, records.num_elements, records.buffer, out_count.GetPointer());
 }
 
-void BootModeService::SetMaintenanceBootForEmbeddedBoot2() {
-    g_is_maintenance_boot = true;
+void DmntService::AtmosphereGetRecordSize(Out<u64> record_size) {
+    record_size.SetValue(sizeof(SmServiceRecord));
 }
+
