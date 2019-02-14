@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 {
     /* Load settings from set:sys. */
     InitializeFatalConfig();
-    
+        
     /* Load shared font. */
     if (R_FAILED(FontManager::InitializeSharedFont())) {
         std::abort();

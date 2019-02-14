@@ -32,6 +32,7 @@
 #include "fs_utils.h"
 #include "nxfs.h"
 #include "gpt.h"
+#include "splash_screen.h"
 #include "display/video_fb.h"
 #include "sdmmc/sdmmc.h"
 #include "lib/log.h"
@@ -95,7 +96,7 @@ int main(int argc, void **argv) {
     /* Initialize the display, console, FS, etc. */
     setup_env();
 
-    print(SCREEN_LOG_LEVEL_MANDATORY, u8"Welcome to Atmosphère Fusée Stage 2!\n");
+    print(SCREEN_LOG_LEVEL_DEBUG | SCREEN_LOG_LEVEL_NO_PREFIX, u8"Welcome to Atmosphère Fusée Stage 2!\n");
     print(SCREEN_LOG_LEVEL_DEBUG, "Stage 2 executing from: %s\n", (const char *)argv[STAGE2_ARGV_PROGRAM_PATH]);
 
     /* This will load all remaining binaries off of the SD. */
@@ -105,8 +106,14 @@ int main(int argc, void **argv) {
 
     g_do_nxboot = loader_ctx->chainload_entrypoint == 0;
     if (g_do_nxboot) {
+        /* Display splash screen. */
+        display_splash_screen_bmp(loader_ctx->custom_splash_path, (void *)0xC0000000);
+        
         print(SCREEN_LOG_LEVEL_MANDATORY, "Now performing nxboot.\n");
         uint32_t boot_memaddr = nxboot_main();
+        /* Wait for the splash screen to have been displayed as long as it should be. */
+        splash_screen_wait_delay();
+        /* Finish boot. */
         nxboot_finish(boot_memaddr);
     } else {
         /* TODO: What else do we want to do in terms of argc/argv? */
