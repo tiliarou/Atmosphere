@@ -22,7 +22,10 @@ stratosphere: exosphere
 troposphere: stratosphere
 	$(MAKE) -C troposphere all
 
-fusee: exosphere stratosphere
+sept: exosphere
+	$(MAKE) -C sept all
+
+fusee: exosphere stratosphere sept
 	$(MAKE) -C $@ all
 
 clean:
@@ -44,12 +47,17 @@ dist: all
 	rm -rf out
 	mkdir atmosphere-$(AMSVER)
 	mkdir atmosphere-$(AMSVER)/atmosphere
+	mkdir atmosphere-$(AMSVER)/sept
 	mkdir atmosphere-$(AMSVER)/switch
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/titles/0100000000000036
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/titles/0100000000000034
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/titles/0100000000000032
 	cp fusee/fusee-primary/fusee-primary.bin atmosphere-$(AMSVER)/atmosphere/reboot_payload.bin
 	cp fusee/fusee-secondary/fusee-secondary.bin atmosphere-$(AMSVER)/atmosphere/fusee-secondary.bin
+	cp fusee/fusee-secondary/fusee-secondary.bin atmosphere-$(AMSVER)/sept/payload.bin
+	cp sept/sept-primary/sept-primary.bin atmosphere-$(AMSVER)/sept/sept-primary.bin
+	cp sept/sept-secondary/sept-secondary.bin atmosphere-$(AMSVER)/sept/sept-secondary.bin
+	cp sept/sept-secondary/sept-secondary.enc atmosphere-$(AMSVER)/sept/sept-secondary.enc
 	cp common/defaults/BCT.ini atmosphere-$(AMSVER)/atmosphere/BCT.ini
 	cp common/defaults/loader.ini atmosphere-$(AMSVER)/atmosphere/loader.ini
 	cp common/defaults/system_settings.ini atmosphere-$(AMSVER)/atmosphere/system_settings.ini

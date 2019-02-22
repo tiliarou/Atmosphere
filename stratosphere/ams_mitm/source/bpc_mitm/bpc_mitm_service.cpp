@@ -25,8 +25,9 @@ void BpcMitmService::PostProcess(IMitmServiceObject *obj, IpcResponseContext *ct
 }
 
 Result BpcMitmService::ShutdownSystem() {
-    /* TODO: Use exosphere + reboot to perform real shutdown, instead of fake shutdown. */
-    return RESULT_FORWARD_TO_SESSION;
+    /* Use exosphere + reboot to perform real shutdown, instead of fake shutdown. */
+    PerformShutdownSmc();
+    return 0;
 }
 
 Result BpcMitmService::RebootSystem() {

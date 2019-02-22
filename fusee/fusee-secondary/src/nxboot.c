@@ -28,6 +28,7 @@
 #include "mc.h"
 #include "se.h"
 #include "pmc.h"
+#include "emc.h"
 #include "fuse.h"
 #include "i2c.h"
 #include "ips.h"
@@ -37,6 +38,7 @@
 #include "flow.h"
 #include "timers.h"
 #include "key_derivation.h"
+#include "masterkey.h"
 #include "package1.h"
 #include "package2.h"
 #include "smmu.h"
@@ -46,10 +48,12 @@
 #include "exocfg.h"
 #include "display/video_fb.h"
 #include "lib/ini.h"
+#include "splash_screen.h"
 
 #define u8 uint8_t
 #define u32 uint32_t
 #include "exosphere_bin.h"
+#include "sept_secondary_enc.h"
 #include "lp0fw_bin.h"
 #include "lib/log.h"
 #undef u8
@@ -307,6 +311,12 @@ static void nxboot_move_bootconfig() {
     free(bootconfig);
 }
 
+static bool get_and_clear_has_run_sept(void) {
+    bool has_run_sept = (MAKE_EMC_REG(EMC_SCRATCH0) & 0x80000000) != 0;
+    MAKE_EMC_REG(EMC_SCRATCH0) &= ~0x80000000;
+    return has_run_sept;
+}
+
 /* This is the main function responsible for booting Horizon. */
 static nx_keyblob_t __attribute__((aligned(16))) g_keyblobs[32];
 uint32_t nxboot_main(void) {
@@ -410,20 +420,22 @@ uint32_t nxboot_main(void) {
             tsec_fw_size = 0xF00;
         }
     }
-    
-    print(SCREEN_LOG_LEVEL_MANDATORY, "[NXBOOT]: Loaded firmware from eMMC...\n");
+
+    print(SCREEN_LOG_LEVEL_INFO, "[NXBOOT]: Loaded firmware from eMMC...\n");
 
     /* Get the TSEC keys. */
     uint8_t tsec_key[0x10] = {0};
     uint8_t tsec_root_keys[0x20][0x10] = {0};
     if (target_firmware >= ATMOSPHERE_TARGET_FIRMWARE_700) {
-        /* TODO: what else to do here? */
-        
-        /* Patch TSEC firmware to exit after generating TSEC key. */
-        *((volatile uint16_t *)((uintptr_t)tsec_fw + 0x2DB5)) = 0x02F8;
-        if (tsec_get_key(tsec_key, 1, tsec_fw, tsec_fw_size) != 0) {
-            fatal_error("[NXBOOT]: Failed to get TSEC key!\n");
+        /* Detect whether we need to run sept-secondary in order to derive keys. */
+        if (!get_and_clear_has_run_sept()) {
+            reboot_to_sept(tsec_fw, tsec_fw_size, sept_secondary_enc, sept_secondary_enc_size);
+        } else {
+            if (mkey_detect_revision(fuse_get_retail_type() != 0) != 0) {
+                fatal_error("[NXBOOT]: Sept derived incorrect keys!\n");
+            }
         }
+        get_and_clear_has_run_sept();
     } else if (target_firmware == ATMOSPHERE_TARGET_FIRMWARE_620) {
         uint8_t tsec_keys[0x20] = {0};
         
@@ -440,10 +452,16 @@ uint32_t nxboot_main(void) {
         }
     }
     
-    /* Derive keydata. */
+    //fatal_error("Ran sept!");
+    /* Display splash screen. */
+    display_splash_screen_bmp(loader_ctx->custom_splash_path, (void *)0xC0000000);
+    
+    /* Derive keydata. If on 7.0.0+, sept has already derived keys for us. */
     unsigned int keygen_type = 0;
-    if (derive_nx_keydata(target_firmware, g_keyblobs, available_revision, tsec_key, tsec_root_keys, &keygen_type) != 0) {
-        fatal_error("[NXBOOT]: Key derivation failed!\n");
+    if (target_firmware < ATMOSPHERE_TARGET_FIRMWARE_700) {
+        if (derive_nx_keydata(target_firmware, g_keyblobs, available_revision, tsec_key, tsec_root_keys, &keygen_type) != 0) {
+            fatal_error("[NXBOOT]: Key derivation failed!\n");
+        }
     }
 
     /* Setup boot configuration for Exosphère. */
@@ -521,10 +539,12 @@ uint32_t nxboot_main(void) {
             pmc->scratch1 = (uint32_t)warmboot_memaddr;
     }
 
-    print(SCREEN_LOG_LEVEL_MANDATORY, "[NXBOOT]: Rebuilding package2...\n");
+    print(SCREEN_LOG_LEVEL_INFO, "[NXBOOT]: Rebuilding package2...\n");
     
     /* Parse stratosphere config. */
     nxboot_configure_stratosphere(MAILBOX_EXOSPHERE_CONFIGURATION->target_firmware);
+
+    print(SCREEN_LOG_LEVEL_INFO, u8"[NXBOOT]: Configured Stratosphere...\n");
 
     /* Patch package2, adding Thermosphère + custom KIPs. */
     package2_rebuild_and_copy(package2, MAILBOX_EXOSPHERE_CONFIGURATION->target_firmware);
