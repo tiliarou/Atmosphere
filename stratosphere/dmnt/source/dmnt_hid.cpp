@@ -14,15 +14,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
-#ifndef ATMOSPHERE_VERSION_H
-#define ATMOSPHERE_VERSION_H
+#include <switch.h>
+#include <string.h>
 
-#define ATMOSPHERE_RELEASE_VERSION_MAJOR    0
-#define ATMOSPHERE_RELEASE_VERSION_MINOR    8
-#define ATMOSPHERE_RELEASE_VERSION_MICRO    4
+#include "dmnt_hid.hpp"
 
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MAJOR 7
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MINOR 0
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MICRO 1
-
-#endif
+Result HidManagement::GetKeysDown(u64 *keys) {
+    if (R_FAILED(hidInitialize())) {
+        return MAKERESULT(Module_Libnx, LibnxError_InitFail_HID);
+    }
+    
+    hidScanInput();
+    *keys = hidKeysDown(CONTROLLER_P1_AUTO);
+    
+    hidExit();
+    return 0x0;
+}

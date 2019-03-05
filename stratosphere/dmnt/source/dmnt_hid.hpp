@@ -14,15 +14,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
-#ifndef ATMOSPHERE_VERSION_H
-#define ATMOSPHERE_VERSION_H
+#pragma once
+#include <switch.h>
 
-#define ATMOSPHERE_RELEASE_VERSION_MAJOR    0
-#define ATMOSPHERE_RELEASE_VERSION_MINOR    8
-#define ATMOSPHERE_RELEASE_VERSION_MICRO    4
-
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MAJOR 7
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MINOR 0
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MICRO 1
-
-#endif
+class HidManagement {
+    public:
+        static Result GetKeysDown(u64 *keys);
+};

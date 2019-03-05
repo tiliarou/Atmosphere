@@ -14,15 +14,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
-#ifndef ATMOSPHERE_VERSION_H
-#define ATMOSPHERE_VERSION_H
+#pragma once
+#include <switch.h>
 
-#define ATMOSPHERE_RELEASE_VERSION_MAJOR    0
-#define ATMOSPHERE_RELEASE_VERSION_MINOR    8
-#define ATMOSPHERE_RELEASE_VERSION_MICRO    4
+struct OverrideKey {
+    u64 key_combination;
+    bool override_by_default;
+};
 
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MAJOR 7
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MINOR 0
-#define ATMOSPHERE_SUPPORTED_HOS_VERSION_MICRO 1
-
-#endif
+class DmntConfigManager {
+    public:
+        static void RefreshConfiguration();
+    
+        static OverrideKey GetTitleCheatEnableKey(u64 tid);
+        static bool HasCheatEnableButton(u64 tid);
+};

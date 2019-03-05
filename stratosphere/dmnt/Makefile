@@ -2,14 +2,12 @@
 .SUFFIXES:
 #---------------------------------------------------------------------------------
 
-ifeq ($(strip $(DEVKITARM)),)
-$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+ifeq ($(strip $(DEVKITPRO)),)
+$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/devkitpro")
 endif
 
 TOPDIR ?= $(CURDIR)
-
-AMS		:= $(TOPDIR)/../../
-include $(DEVKITARM)/base_rules
+include $(DEVKITPRO)/libnx/switch_rules
 
 AMSBRANCH := $(shell git symbolic-ref --short HEAD)
 AMSREV := $(AMSBRANCH)-$(shell git rev-parse --short HEAD)
@@ -24,45 +22,39 @@ endif
 # SOURCES is a list of directories containing source code
 # DATA is a list of directories containing data files
 # INCLUDES is a list of directories containing header files
+# EXEFS_SRC is the optional input directory containing data copied into exefs, if anything this normally should only contain "main.npdm".
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	src src/sdmmc src/lib src/lib/fatfs src/display
+SOURCES		:=	source
 DATA		:=	data
-INCLUDES	:=	include  ../../common/include
+INCLUDES	:=	include ../../common/include
+EXEFS_SRC	:=	exefs_src
+
+DEFINES	:=	-DDISABLE_IPC -DATMOSPHERE_GIT_BRANCH=\"$(AMSBRANCH)\" -DATMOSPHERE_GIT_REV=\"$(AMSREV)\"
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv4t -mtune=arm7tdmi -mthumb -mthumb-interwork
-DEFINES :=	-D__BPMP__ -DFUSEE_STAGE1_SRC -DATMOSPHERE_GIT_BRANCH=\"$(AMSBRANCH)\" -DATMOSPHERE_GIT_REV=\"$(AMSREV)\"
+ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
 
-CFLAGS	:= \
-	-g \
-	-O2 \
-	-fomit-frame-pointer \
-	-ffunction-sections \
-	-fdata-sections \
-	-std=gnu11 \
-	-Werror \
-	-Wall \
-	-fstrict-volatile-bitfields \
-	$(ARCH) $(DEFINES)
+CFLAGS	:=	-g -Wall -O2 -ffunction-sections \
+			$(ARCH) $(DEFINES)
 
-CFLAGS	+=	$(INCLUDE)
+CFLAGS	+=	$(INCLUDE) -D__SWITCH__
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=$(TOPDIR)/linker.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=
+LIBS	:= -lstratosphere -lnx
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=
+LIBDIRS	:= $(PORTLIBS) $(LIBNX) $(CURDIR)/../libstratosphere
 
 
 #---------------------------------------------------------------------------------
@@ -76,15 +68,14 @@ export OUTPUT	:=	$(CURDIR)/$(TARGET)
 export TOPDIR	:=	$(CURDIR)
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
-			$(foreach dir,$(DATA),$(CURDIR)/$(dir)) \
-			$(AMS)/exosphere/rebootstub
+			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*))) rebootstub.bin
+BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
@@ -100,10 +91,8 @@ else
 endif
 #---------------------------------------------------------------------------------
 
-export OFILES_BIN	:=	$(addsuffix .o,$(BINFILES))
-export OFILES_SRC	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
-export OFILES 		:=	$(OFILES_BIN) $(OFILES_SRC)
-export HFILES_BIN	:=	$(addsuffix .h,$(subst .,_,$(BINFILES)))
+export OFILES	:=	$(addsuffix .o,$(BINFILES)) \
+			$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
@@ -111,62 +100,61 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
-.PHONY: $(BUILD) clean all check_rebootstub
+export BUILD_EXEFS_SRC := $(TOPDIR)/$(EXEFS_SRC)
+
+ifeq ($(strip $(CONFIG_JSON)),)
+	jsons := $(wildcard *.json)
+	ifneq (,$(findstring $(TARGET).json,$(jsons)))
+		export APP_JSON := $(TOPDIR)/$(TARGET).json
+	else
+		ifneq (,$(findstring config.json,$(jsons)))
+			export APP_JSON := $(TOPDIR)/config.json
+		endif
+	endif
+else
+	export APP_JSON := $(TOPDIR)/$(CONFIG_JSON)
+endif
+
+.PHONY: $(BUILD) clean all
 
 #---------------------------------------------------------------------------------
-all: check_rebootstub $(BUILD)
-
-check_rebootstub:
-	@$(MAKE) -C $(AMS)/exosphere/rebootstub all
+all: $(BUILD)
 
 $(BUILD):
-ifeq ($(strip $(SEPT_ENC_PATH)),)
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
-else
-	@touch $(TOPDIR)/$(TARGET).bin
-	@cp $(SEPT_ENC_PATH) $(TOPDIR)/$(TARGET).enc
-endif
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@$(MAKE) -C $(AMS)/exosphere/rebootstub clean
-	@rm -fr $(BUILD) $(TARGET).bin $(TARGET).enc $(TARGET).elf
+	@rm -fr $(BUILD) $(TARGET).nsp $(TARGET).npdm $(TARGET).nso $(TARGET).elf
 
 
 #---------------------------------------------------------------------------------
 else
-.PHONY:	all $(OUTPUT).enc
+.PHONY:	all
 
 DEPENDS	:=	$(OFILES:.o=.d)
 
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
-all	:	$(OUTPUT).enc
+all	:	$(OUTPUT).nsp
 
-$(OUTPUT).enc	:	$(OUTPUT).bin
-	@python $(TOPDIR)/sept_sign.py $< $@
-	@echo built ... $(notdir $@)
+ifeq ($(strip $(APP_JSON)),)
+$(OUTPUT).nsp	:	$(OUTPUT).nso
+else
+$(OUTPUT).nsp	:	$(OUTPUT).nso $(OUTPUT).npdm
+endif
 
-$(OUTPUT).bin	:	$(OUTPUT).elf
-	$(OBJCOPY) -S -O binary $< $@
-	@echo built ... $(notdir $@)
+$(OUTPUT).nso	:	$(OUTPUT).elf
 
 $(OUTPUT).elf	:	$(OFILES)
-
-%.elf: $(OFILES)
-	@echo linking $(notdir $@)
-	@$(LD) $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
-	@$(NM) -CSn $@ > $(notdir $*.lst)
-
-$(OFILES_SRC)	: $(HFILES_BIN)
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
 #---------------------------------------------------------------------------------
-%.bin.o	%_bin.h:	%.bin
+%.bin.o	:	%.bin
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)
