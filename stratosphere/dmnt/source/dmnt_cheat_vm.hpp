@@ -28,12 +28,17 @@ enum CheatVmOpcodeType : u32 {
     CheatVmOpcodeType_ControlLoop = 3,
     CheatVmOpcodeType_LoadRegisterStatic = 4,
     CheatVmOpcodeType_LoadRegisterMemory = 5,
-    CheatVmOpcodeType_StoreToRegisterAddress = 6,
+    CheatVmOpcodeType_StoreStaticToAddress = 6,
     CheatVmOpcodeType_PerformArithmeticStatic = 7,
     CheatVmOpcodeType_BeginKeypressConditionalBlock = 8,
     
     /* These are not implemented by Gateway's VM. */
     CheatVmOpcodeType_PerformArithmeticRegister = 9,
+    CheatVmOpcodeType_StoreRegisterToAddress = 10,
+    
+    /* This is a meta entry, and not a real opcode. */
+    /* This is to facilitate multi-nybble instruction decoding in the future. */
+    CheatVmOpcodeType_ExtendedWidth = 12,
 };
 
 enum MemoryAccessType : u32 {
@@ -64,6 +69,12 @@ enum RegisterArithmeticType : u32 {
     RegisterArithmeticType_LogicalXor = 8,
     
     RegisterArithmeticType_None = 9,
+};
+
+enum StoreRegisterOffsetType : u32 {
+    StoreRegisterOffsetType_None = 0,
+    StoreRegisterOffsetType_Reg = 1,
+    StoreRegisterOffsetType_Imm = 2,
 };
 
 union VmInt {
@@ -110,7 +121,7 @@ struct LoadRegisterMemoryOpcode {
     u64 rel_address;
 };
 
-struct StoreToRegisterAddressOpcode {
+struct StoreStaticToAddressOpcode {
     u32 bit_width;
     u32 reg_index;
     bool increment_reg;
@@ -140,8 +151,20 @@ struct PerformArithmeticRegisterOpcode {
     VmInt value;
 };
 
+struct StoreRegisterToAddressOpcode {
+    u32 bit_width;
+    u32 str_reg_index;
+    u32 addr_reg_index;
+    bool increment_reg;
+    StoreRegisterOffsetType ofs_type;
+    u32 ofs_reg_index;
+    u64 rel_address;
+};
+
+
 struct CheatVmOpcode {
     CheatVmOpcodeType opcode;
+    bool begin_conditional_block;
     union {
         StoreStaticOpcode store_static;
         BeginConditionalOpcode begin_cond;
@@ -149,10 +172,11 @@ struct CheatVmOpcode {
         ControlLoopOpcode ctrl_loop;
         LoadRegisterStaticOpcode ldr_static;
         LoadRegisterMemoryOpcode ldr_memory;
-        StoreToRegisterAddressOpcode str_regaddr;
+        StoreStaticToAddressOpcode str_static;
         PerformArithmeticStaticOpcode perform_math_static;
         BeginKeypressConditionalOpcode begin_keypress_cond;
         PerformArithmeticRegisterOpcode perform_math_reg;
+        StoreRegisterToAddressOpcode str_register;
     };
 };
 
@@ -163,6 +187,7 @@ class DmntCheatVm {
     private:
         size_t num_opcodes = 0;
         size_t instruction_ptr = 0;
+        size_t condition_depth = 0;
         bool decode_success = false;
         u32 program[MaximumProgramOpcodeCount] = {0};
         u64 registers[NumRegisters] = {0};

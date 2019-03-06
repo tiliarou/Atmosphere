@@ -95,15 +95,15 @@ void DmntCheatVm::LogOpcode(const CheatVmOpcode *opcode) {
             this->LogToDebugFile("From Reg:  %d\n", opcode->ldr_memory.load_from_reg);
             this->LogToDebugFile("Rel Addr:  %lx\n", opcode->ldr_memory.rel_address);
             break;
-        case CheatVmOpcodeType_StoreToRegisterAddress:
-            this->LogToDebugFile("Opcode: Store Static to Register Address\n");
-            this->LogToDebugFile("Bit Width: %x\n", opcode->str_regaddr.bit_width);
-            this->LogToDebugFile("Reg Idx:   %x\n", opcode->str_regaddr.reg_index);
-            if (opcode->str_regaddr.add_offset_reg) {
-                this->LogToDebugFile("O Reg Idx: %x\n", opcode->str_regaddr.offset_reg_index);
+        case CheatVmOpcodeType_StoreStaticToAddress:
+            this->LogToDebugFile("Opcode: Store Static to Address\n");
+            this->LogToDebugFile("Bit Width: %x\n", opcode->str_static.bit_width);
+            this->LogToDebugFile("Reg Idx:   %x\n", opcode->str_static.reg_index);
+            if (opcode->str_static.add_offset_reg) {
+                this->LogToDebugFile("O Reg Idx: %x\n", opcode->str_static.offset_reg_index);
             }
-            this->LogToDebugFile("Incr Reg:  %d\n", opcode->str_regaddr.increment_reg);
-            this->LogToDebugFile("Value:     %lx\n", opcode->str_regaddr.value);
+            this->LogToDebugFile("Incr Reg:  %d\n", opcode->str_static.increment_reg);
+            this->LogToDebugFile("Value:     %lx\n", opcode->str_static.value);
             break;
         case CheatVmOpcodeType_PerformArithmeticStatic:
             this->LogToDebugFile("Opcode: Perform Static Arithmetic\n");
@@ -125,6 +125,23 @@ void DmntCheatVm::LogOpcode(const CheatVmOpcode *opcode) {
                 this->LogToDebugFile("Value:     %lx\n", opcode->perform_math_reg.value.bit64);
             } else {
                 this->LogToDebugFile("Src2 Idx:  %x\n", opcode->perform_math_reg.src_reg_2_index);
+            }
+            break;
+        case CheatVmOpcodeType_StoreRegisterToAddress:
+            this->LogToDebugFile("Opcode: Store Register to Address\n");
+            this->LogToDebugFile("Bit Width: %x\n", opcode->str_register.bit_width);
+            this->LogToDebugFile("S Reg Idx: %x\n", opcode->str_register.str_reg_index);
+            this->LogToDebugFile("A Reg Idx: %x\n", opcode->str_register.addr_reg_index);
+            this->LogToDebugFile("Incr Reg:  %d\n", opcode->str_register.increment_reg);
+            switch (opcode->str_register.ofs_type) {
+                case StoreRegisterOffsetType_None:
+                    break;
+                case StoreRegisterOffsetType_Reg:
+                    this->LogToDebugFile("O Reg Idx: %x\n", opcode->str_register.ofs_reg_index);
+                    break;
+                case StoreRegisterOffsetType_Imm:
+                    this->LogToDebugFile("Rel Addr:  %lx\n", opcode->str_register.rel_address);
+                    break;
             }
             break;
         default:
@@ -183,6 +200,20 @@ bool DmntCheatVm::DecodeNextOpcode(CheatVmOpcode *out) {
     }
     
     opcode.opcode = (CheatVmOpcodeType)(((first_dword >> 28) & 0xF));
+    if (opcode.opcode >= CheatVmOpcodeType_ExtendedWidth) {
+        opcode.opcode = (CheatVmOpcodeType)((((u32)opcode.opcode) << 4) | ((first_dword >> 24) & 0xF));
+    }
+    
+    /* detect condition start. */
+    switch (opcode.opcode) {
+        case CheatVmOpcodeType_BeginConditionalBlock:
+        case CheatVmOpcodeType_BeginKeypressConditionalBlock:
+            opcode.begin_conditional_block = true;
+            break;
+        default:
+            opcode.begin_conditional_block = false;
+            break;
+    }
     
     switch (opcode.opcode) {
         case CheatVmOpcodeType_StoreStatic:
@@ -249,16 +280,16 @@ bool DmntCheatVm::DecodeNextOpcode(CheatVmOpcode *out) {
                 opcode.ldr_memory.rel_address = ((u64)(first_dword & 0xFF) << 32ul) | ((u64)second_dword);
             }
             break;
-        case CheatVmOpcodeType_StoreToRegisterAddress:
+        case CheatVmOpcodeType_StoreStaticToAddress:
             {
                 /* 6T0RIor0 VVVVVVVV VVVVVVVV */
                 /* Read additional words. */
-                opcode.str_regaddr.bit_width = (first_dword >> 24) & 0xF;
-                opcode.str_regaddr.reg_index = ((first_dword >> 16) & 0xF);
-                opcode.str_regaddr.increment_reg = ((first_dword >> 12) & 0xF) != 0;
-                opcode.str_regaddr.add_offset_reg = ((first_dword >> 8) & 0xF) != 0;
-                opcode.str_regaddr.offset_reg_index = ((first_dword >> 4) & 0xF);
-                opcode.str_regaddr.value = (((u64)GetNextDword()) << 32ul) | ((u64)GetNextDword());
+                opcode.str_static.bit_width = (first_dword >> 24) & 0xF;
+                opcode.str_static.reg_index = ((first_dword >> 16) & 0xF);
+                opcode.str_static.increment_reg = ((first_dword >> 12) & 0xF) != 0;
+                opcode.str_static.add_offset_reg = ((first_dword >> 8) & 0xF) != 0;
+                opcode.str_static.offset_reg_index = ((first_dword >> 4) & 0xF);
+                opcode.str_static.value = (((u64)GetNextDword()) << 32ul) | ((u64)GetNextDword());
             }
             break;
         case CheatVmOpcodeType_PerformArithmeticStatic:
@@ -294,6 +325,38 @@ bool DmntCheatVm::DecodeNextOpcode(CheatVmOpcode *out) {
                 }
             }
             break;
+        case CheatVmOpcodeType_StoreRegisterToAddress:
+            {
+                /* ATSRIOra (aaaaaaaa) */
+                /* A = opcode 10 */
+                /* T = bit width */
+                /* S = src register index */
+                /* R = address register index */
+                /* I = 1 if increment address register, 0 if not increment address register */
+                /* O = offset type, 0 = None, 1 = Register, 2 = Immediate */
+                /* r = offset register (for offset type 1) */
+                /* a = relative address (for offset type 2) */
+                opcode.str_register.bit_width = (first_dword >> 24) & 0xF;
+                opcode.str_register.str_reg_index  = ((first_dword >> 20) & 0xF);
+                opcode.str_register.addr_reg_index = ((first_dword >> 16) & 0xF);
+                opcode.str_register.increment_reg  = ((first_dword >> 12) & 0xF) != 0;
+                opcode.str_register.ofs_type = (StoreRegisterOffsetType)(((first_dword >> 8) & 0xF));
+                opcode.str_register.ofs_reg_index = ((first_dword >> 4) & 0xF);
+                switch (opcode.str_register.ofs_type) {
+                    case StoreRegisterOffsetType_None:
+                    case StoreRegisterOffsetType_Reg:
+                        /* Nothing more to do */
+                        break;
+                    case StoreRegisterOffsetType_Imm:
+                        opcode.str_register.rel_address = (((u64)(first_dword & 0xF) << 32ul) | ((u64)GetNextDword()));
+                        break;
+                    default:
+                        opcode.str_register.ofs_type = StoreRegisterOffsetType_None;
+                        break;
+                }
+            }
+            break;
+        case CheatVmOpcodeType_ExtendedWidth:
         default:
             /* Unrecognized instruction cannot be decoded. */
             valid = false;
@@ -305,16 +368,32 @@ bool DmntCheatVm::DecodeNextOpcode(CheatVmOpcode *out) {
 }
 
 void DmntCheatVm::SkipConditionalBlock() {
-    CheatVmOpcode skip_opcode;
-    while (this->DecodeNextOpcode(&skip_opcode)) {
-        /* Decode instructions until we see end of conditional block. */
-        /* NOTE: This is broken in gateway's implementation. */
-        /* Gateway currently checks for "0x2" instead of "0x20000000" */
-        /* In addition, they do a linear scan instead of correctly decoding opcodes. */
-        /* This causes issues if "0x2" appears as an immediate in the conditional block... */
-        if (skip_opcode.opcode == CheatVmOpcodeType_EndConditionalBlock) {
-            break;
+    if (this->condition_depth > 0) {
+        /* We want to continue until we're out of the current block. */
+        const size_t desired_depth = this->condition_depth - 1;
+        
+        CheatVmOpcode skip_opcode;
+        while (this->DecodeNextOpcode(&skip_opcode) && this->condition_depth > desired_depth) {
+            /* Decode instructions until we see end of the current conditional block. */
+            /* NOTE: This is broken in gateway's implementation. */
+            /* Gateway currently checks for "0x2" instead of "0x20000000" */
+            /* In addition, they do a linear scan instead of correctly decoding opcodes. */
+            /* This causes issues if "0x2" appears as an immediate in the conditional block... */
+            
+            /* We also support nesting of conditional blocks, and Gateway does not. */
+            if (skip_opcode.begin_conditional_block) {
+                this->condition_depth++;
+            } else if (skip_opcode.opcode == CheatVmOpcodeType_EndConditionalBlock) {
+                this->condition_depth--;
+            }
         }
+    } else {
+        /* Skipping, but this->condition_depth = 0. */
+        /* This is an error condition. */
+        /* However, I don't actually believe it is possible for this to happen. */
+        /* I guess we'll throw a fatal error here, so as to encourage me to fix the VM */
+        /* in the event that someone triggers it? I don't know how you'd do that. */
+        fatalSimple(ResultDmntCheatVmInvalidCondDepth);
     }
 }
 
@@ -350,6 +429,7 @@ void DmntCheatVm::ResetState() {
         this->loop_tops[i] = 0;
     }
     this->instruction_ptr = 0;
+    this->condition_depth = 0;
     this->decode_success = true;
 }
 
@@ -361,6 +441,7 @@ bool DmntCheatVm::LoadProgram(const CheatEntry *cheats, size_t num_cheats) {
         if (cheats[i].enabled) {
             /* Bounds check. */
             if (cheats[i].definition.num_opcodes + this->num_opcodes > MaximumProgramOpcodeCount) {
+                this->num_opcodes = 0;
                 return false;
             }
             
@@ -399,6 +480,11 @@ void DmntCheatVm::Execute(const CheatProcessMetadata *metadata) {
             this->LogToDebugFile("Registers[%02x]: %016lx\n", i, this->registers[i]);
         }
         this->LogOpcode(&cur_opcode);
+        
+        /* Increment conditional depth, if relevant. */
+        if (cur_opcode.begin_conditional_block) {
+            this->condition_depth++;
+        }
         
         switch (cur_opcode.opcode) {
             case CheatVmOpcodeType_StoreStatic:
@@ -459,7 +545,11 @@ void DmntCheatVm::Execute(const CheatProcessMetadata *metadata) {
                 }
                 break;
             case CheatVmOpcodeType_EndConditionalBlock:
-                /* There is nothing to do here. Just move on to the next instruction. */
+                /* Decrement the condition depth. */
+                /* We will assume, graciously, that mismatched conditional block ends are a nop. */
+                if (this->condition_depth > 0) {
+                    this->condition_depth--;
+                }
                 break;
             case CheatVmOpcodeType_ControlLoop:
                 if (cur_opcode.ctrl_loop.start_loop) {
@@ -498,26 +588,26 @@ void DmntCheatVm::Execute(const CheatProcessMetadata *metadata) {
                     }
                 }
                 break;
-            case CheatVmOpcodeType_StoreToRegisterAddress:
+            case CheatVmOpcodeType_StoreStaticToAddress:
                 {
                     /* Calculate address. */
-                    u64 dst_address = this->registers[cur_opcode.str_regaddr.reg_index];
-                    u64 dst_value = cur_opcode.str_regaddr.value;
-                    if (cur_opcode.str_regaddr.add_offset_reg) {
-                        dst_address += this->registers[cur_opcode.str_regaddr.offset_reg_index];
+                    u64 dst_address = this->registers[cur_opcode.str_static.reg_index];
+                    u64 dst_value = cur_opcode.str_static.value;
+                    if (cur_opcode.str_static.add_offset_reg) {
+                        dst_address += this->registers[cur_opcode.str_static.offset_reg_index];
                     }
                     /* Write value to memory. Gateway only writes on valid bitwidth. */
-                    switch (cur_opcode.str_regaddr.bit_width) {
+                    switch (cur_opcode.str_static.bit_width) {
                         case 1:
                         case 2:
                         case 4:
                         case 8:
-                            DmntCheatManager::WriteCheatProcessMemoryForVm(dst_address, &dst_value, cur_opcode.str_regaddr.bit_width);
+                            DmntCheatManager::WriteCheatProcessMemoryForVm(dst_address, &dst_value, cur_opcode.str_static.bit_width);
                             break;
                     }
                     /* Increment register if relevant. */
-                    if (cur_opcode.str_regaddr.increment_reg) {
-                        this->registers[cur_opcode.str_regaddr.reg_index] += cur_opcode.str_regaddr.bit_width;
+                    if (cur_opcode.str_static.increment_reg) {
+                        this->registers[cur_opcode.str_static.reg_index] += cur_opcode.str_static.bit_width;
                     }
                 }
                 break;
@@ -630,6 +720,42 @@ void DmntCheatVm::Execute(const CheatProcessMetadata *metadata) {
                     /* Save to register. */
                     this->registers[cur_opcode.perform_math_reg.dst_reg_index] = res_val;
                 }
+                break;
+            case CheatVmOpcodeType_StoreRegisterToAddress:
+                {
+                    /* Calculate address. */
+                    u64 dst_value   = this->registers[cur_opcode.str_register.str_reg_index];
+                    u64 dst_address = this->registers[cur_opcode.str_register.addr_reg_index];
+                    switch (cur_opcode.str_register.ofs_type) {
+                        case StoreRegisterOffsetType_None:
+                            /* Nothing more to do */
+                            break;
+                        case StoreRegisterOffsetType_Reg:
+                            dst_address += this->registers[cur_opcode.str_register.ofs_reg_index];
+                            break;
+                        case StoreRegisterOffsetType_Imm:
+                            dst_address += cur_opcode.str_register.rel_address;
+                            break;
+                    }
+                    
+                    /* Write value to memory. Write only on valid bitwidth. */
+                    switch (cur_opcode.str_register.bit_width) {
+                        case 1:
+                        case 2:
+                        case 4:
+                        case 8:
+                            DmntCheatManager::WriteCheatProcessMemoryForVm(dst_address, &dst_value, cur_opcode.str_register.bit_width);
+                            break;
+                    }
+                    
+                    /* Increment register if relevant. */
+                    if (cur_opcode.str_register.increment_reg) {
+                        this->registers[cur_opcode.str_register.addr_reg_index] += cur_opcode.str_register.bit_width;
+                    }
+                }
+                break;
+            default:
+                /* By default, we do a no-op. */
                 break;
         }
     }

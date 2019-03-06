@@ -22,7 +22,7 @@
 #include "pm_shim.h"
 
 static HosMutex g_cheat_lock;
-static HosThread g_detect_thread, g_vm_thread;
+static HosThread g_detect_thread, g_vm_thread, g_debug_events_thread;
 
 static IEvent *g_cheat_process_event;
 static DmntCheatVm *g_cheat_vm;
@@ -30,11 +30,52 @@ static DmntCheatVm *g_cheat_vm;
 static CheatProcessMetadata g_cheat_process_metadata = {0};
 static Handle g_cheat_process_debug_hnd = 0;
 
+/* Should we enable cheats by default? */
+static bool g_enable_cheats_by_default = true;
+
+/* For debug event thread management. */
+static HosMutex g_debug_event_thread_lock;
+static bool g_has_debug_events_thread = false;
+
+/* To save some copying. */
+static bool g_needs_reload_vm_program = false;
+
 /* Global cheat entry storage. */
 static CheatEntry g_cheat_entries[DmntCheatManager::MaxCheatCount];
 
 /* Global frozen address storage. */
 static std::map<u64, FrozenAddressValue> g_frozen_addresses_map;
+
+void DmntCheatManager::StartDebugEventsThread() {
+    std::scoped_lock<HosMutex> lk(g_debug_event_thread_lock);
+    
+    /* Spawn the debug events thread. */
+    if (!g_has_debug_events_thread) {
+        Result rc;
+        
+        if (R_FAILED((rc = g_debug_events_thread.Initialize(&DmntCheatManager::DebugEventsThread, nullptr, 0x4000, 48)))) {
+            return fatalSimple(rc);
+        }
+        
+        if (R_FAILED((rc = g_debug_events_thread.Start()))) {
+            return fatalSimple(rc);
+        }
+        
+        g_has_debug_events_thread = true;
+    }
+}
+
+void DmntCheatManager::WaitDebugEventsThread() {
+    std::scoped_lock<HosMutex> lk(g_debug_event_thread_lock);
+    
+    /* Wait for the thread to exit. */
+    if (g_has_debug_events_thread) {
+        g_debug_events_thread.CancelSynchronization();
+        g_debug_events_thread.Join();
+        
+        g_has_debug_events_thread = false;
+    }
+}
 
 void DmntCheatManager::CloseActiveCheatProcess() {
     if (g_cheat_process_debug_hnd != 0) {
@@ -69,7 +110,7 @@ bool DmntCheatManager::HasActiveCheatProcess() {
     if (has_cheat_process) {
         has_cheat_process &= tmp == g_cheat_process_metadata.process_id;
     }
-    
+
     if (!has_cheat_process) {
         CloseActiveCheatProcess();
     }
@@ -84,7 +125,7 @@ void DmntCheatManager::ContinueCheatProcess() {
         while (R_SUCCEEDED(svcGetDebugEvent((u8 *)debug_event_buf, g_cheat_process_debug_hnd))) {
             /* ... */
         }
-        
+
         /* Continue the process. */
         if (kernelAbove300()) {
             svcContinueDebugEvent(g_cheat_process_debug_hnd, 5, nullptr, 0);
@@ -104,7 +145,26 @@ Result DmntCheatManager::ReadCheatProcessMemoryForVm(u64 proc_addr, void *out_da
 
 Result DmntCheatManager::WriteCheatProcessMemoryForVm(u64 proc_addr, const void *data, size_t size) {
     if (HasActiveCheatProcess()) {
-        return svcWriteDebugProcessMemory(g_cheat_process_debug_hnd, data, proc_addr, size);
+        Result rc = svcWriteDebugProcessMemory(g_cheat_process_debug_hnd, data, proc_addr, size);
+        
+        /* We might have a frozen address. Update it if we do! */
+        if (R_SUCCEEDED(rc)) {
+            for (auto & [address, value] : g_frozen_addresses_map) {
+                /* Map is in order, so break here. */
+                if (address >= proc_addr + size) {
+                    break;
+                }
+                
+                /* Check if we need to write. */
+                if (proc_addr <= address) {
+                    const size_t offset = (address - proc_addr);
+                    const size_t size_to_copy = size - offset;
+                    memcpy(&value.value, (void *)((uintptr_t)data + offset), size_to_copy < sizeof(value.value) ? size_to_copy : sizeof(value.value));
+                }
+            }
+        }
+        
+        return rc;
     }
     
     return ResultDmntCheatNotAttached;
@@ -203,6 +263,9 @@ void DmntCheatManager::ResetCheatEntry(size_t i) {
         g_cheat_entries[i].enabled = false;
         g_cheat_entries[i].cheat_id = i;
         g_cheat_entries[i].definition = {0};
+        
+        /* Trigger a VM reload. */
+        g_needs_reload_vm_program = true;
     }
 }
 
@@ -234,6 +297,9 @@ CheatEntry *DmntCheatManager::GetCheatEntryById(size_t i) {
 bool DmntCheatManager::ParseCheats(const char *s, size_t len) {
     size_t i = 0;
     CheatEntry *cur_entry = NULL;
+        
+    /* Trigger a VM reload. */
+    g_needs_reload_vm_program = true;
     
     while (i < len) {
         if (isspace(s[i])) {
@@ -320,10 +386,15 @@ bool DmntCheatManager::ParseCheats(const char *s, size_t len) {
         }
     }
     
+    /* Master cheat can't be disabled. */
+    if (g_cheat_entries[0].definition.num_opcodes > 0) {
+        g_cheat_entries[0].enabled = true;
+    }
+    
     /* Enable all entries we parsed. */
-    for (size_t i = 0; i < DmntCheatManager::MaxCheatCount; i++) {
+    for (size_t i = 1; i < DmntCheatManager::MaxCheatCount; i++) {
         if (g_cheat_entries[i].definition.num_opcodes > 0) {
-            g_cheat_entries[i].enabled = true;
+            g_cheat_entries[i].enabled = g_enable_cheats_by_default;
         }
     }
     
@@ -438,7 +509,14 @@ Result DmntCheatManager::ToggleCheat(u32 cheat_id) {
         return ResultDmntCheatUnknownChtId;
     }
     
+    if (cheat_id == 0) {
+        return ResultDmntCheatCannotDisableMasterCheat;
+    }
+    
     entry->enabled = !entry->enabled;
+    
+    /* Trigger a VM reload. */
+    g_needs_reload_vm_program = true;
     return 0;
 }
 
@@ -460,6 +538,9 @@ Result DmntCheatManager::AddCheat(u32 *out_id, CheatDefinition *def, bool enable
     
     new_entry->enabled = enabled;
     new_entry->definition = *def;
+    
+    /* Trigger a VM reload. */
+    g_needs_reload_vm_program = true;
     return 0;
 }
 
@@ -475,6 +556,9 @@ Result DmntCheatManager::RemoveCheat(u32 cheat_id) {
     }
     
     ResetCheatEntry(cheat_id);
+    
+    /* Trigger a VM reload. */
+    g_needs_reload_vm_program = true;
     return 0;
 }
 
@@ -613,6 +697,11 @@ Result DmntCheatManager::ForceOpenCheatProcess() {
         return 0;
     }
     
+    /* Close the current application, if it's open. */
+    CloseActiveCheatProcess();
+    /* Wait to not have debug events thread. */
+    WaitDebugEventsThread();
+    
     /* Get the current application process ID. */
     if (R_FAILED((rc = pmdmntGetApplicationPid(&g_cheat_process_metadata.process_id)))) {
         return rc;
@@ -673,10 +762,10 @@ Result DmntCheatManager::ForceOpenCheatProcess() {
     if (R_FAILED((rc = svcDebugActiveProcess(&g_cheat_process_debug_hnd, g_cheat_process_metadata.process_id)))) {
         return rc;
     }
+
+    /* Start debug events thread. */
+    StartDebugEventsThread();
         
-    /* Continue debug events, etc. */
-    ContinueCheatProcess();
-    
     /* Signal to our fans. */
     g_cheat_process_event->Signal();
     
@@ -689,6 +778,9 @@ void DmntCheatManager::OnNewApplicationLaunch() {
     
     /* Close the current application, if it's open. */
     CloseActiveCheatProcess();
+    
+    /* Wait to not have debug events thread. */
+    WaitDebugEventsThread();
     
     /* Get the new application's process ID. */
     if (R_FAILED((rc = pmdmntGetApplicationPid(&g_cheat_process_metadata.process_id)))) {
@@ -759,10 +851,10 @@ void DmntCheatManager::OnNewApplicationLaunch() {
     
     /* Start the process. */
     StartDebugProcess(g_cheat_process_metadata.process_id);
-    
-    /* Continue debug events, etc. */
-    ContinueCheatProcess();
-    
+
+    /* Start debug events thread. */
+    StartDebugEventsThread();
+        
     /* Signal to our fans. */
     g_cheat_process_event->Signal();
 }
@@ -791,11 +883,12 @@ void DmntCheatManager::VmThread(void *arg) {
             std::scoped_lock<HosMutex> lk(g_cheat_lock);
             
             if (HasActiveCheatProcess()) {
-                /* Handle any pending debug events. */
-                ContinueCheatProcess();
-                
                 /* Execute VM. */
-                if (g_cheat_vm->LoadProgram(g_cheat_entries, DmntCheatManager::MaxCheatCount)) {
+                if (!g_needs_reload_vm_program || (g_cheat_vm->LoadProgram(g_cheat_entries, DmntCheatManager::MaxCheatCount))) {
+                    /* Program: reloaded. */
+                    g_needs_reload_vm_program = false;
+                    
+                    /* Execute program if it's present. */
                     if (g_cheat_vm->GetProgramSize() != 0) {
                         g_cheat_vm->Execute(&g_cheat_process_metadata);
                     }
@@ -807,7 +900,22 @@ void DmntCheatManager::VmThread(void *arg) {
                 }
             }
         }
-        svcSleepThread(0x5000000ul);
+        
+        constexpr u64 ONE_SECOND = 1000000000ul;
+        constexpr u64 NUM_TIMES = 12;
+        constexpr u64 DELAY = ONE_SECOND / NUM_TIMES;
+        svcSleepThread(DELAY);
+    }
+}
+
+void DmntCheatManager::DebugEventsThread(void *arg) {
+    while (R_SUCCEEDED(svcWaitSynchronizationSingle(g_cheat_process_debug_hnd, U64_MAX))) {
+        std::scoped_lock<HosMutex> lk(g_cheat_lock);
+        
+        /* Handle any pending debug events. */
+        if (HasActiveCheatProcess()) {
+            ContinueCheatProcess();
+        }
     }
 }
 
@@ -839,11 +947,20 @@ void DmntCheatManager::InitializeCheatManager() {
     /* Create cheat vm. */
     g_cheat_vm = new DmntCheatVm();
     
+    /* Learn whether we should enable cheats by default. */
+    {
+        u8 en;
+        if (R_SUCCEEDED(setsysGetSettingsItemValue("atmosphere", "dmnt_cheats_enabled_by_default", &en, sizeof(en)))) {
+            g_enable_cheats_by_default = (en != 0);
+        }
+    }
+    
     /* Spawn application detection thread, spawn cheat vm thread. */
-    if (R_FAILED(g_detect_thread.Initialize(&DmntCheatManager::DetectThread, nullptr, 0x4000, 28))) {
+    if (R_FAILED(g_detect_thread.Initialize(&DmntCheatManager::DetectThread, nullptr, 0x4000, 39))) {
         std::abort();
     }
-    if (R_FAILED(g_vm_thread.Initialize(&DmntCheatManager::VmThread, nullptr, 0x4000, 28))) {
+    
+    if (R_FAILED(g_vm_thread.Initialize(&DmntCheatManager::VmThread, nullptr, 0x4000, 48))) {
         std::abort();
     }
     
