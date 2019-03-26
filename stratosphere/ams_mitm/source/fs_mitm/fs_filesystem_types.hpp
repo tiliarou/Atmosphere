@@ -13,13 +13,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
-#pragma once
-#include <switch.h>
-#include <stratosphere.hpp>
 
-class VersionManager {
-    public:
-        static void Initialize();
-        static Result GetFirmwareVersion(u64 title_id, SetSysFirmwareVersion *out);
+#pragma once
+    
+enum OpenMode {
+    OpenMode_Read = (1 << 0),
+    OpenMode_Write = (1 << 1),
+    OpenMode_Append = (1 << 2),
+    
+    OpenMode_ReadWrite = OpenMode_Read | OpenMode_Write,
+    OpenMode_All = OpenMode_ReadWrite | OpenMode_Append,
+};
+
+enum DirectoryOpenMode {
+    DirectoryOpenMode_Directories = (1 << 0),
+    DirectoryOpenMode_Files = (1 << 1),
+    
+    DirectoryOpenMode_All = (DirectoryOpenMode_Directories | DirectoryOpenMode_Files),
+};
+
+enum DirectoryEntryType {
+    DirectoryEntryType_Directory,
+    DirectoryEntryType_File,
 };

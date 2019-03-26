@@ -220,8 +220,6 @@ void Utils::InitializeThreadFunc(void *args) {
         }
         
         g_has_hid_session = true;
-        
-        hidExit();
     }
 }
 
@@ -382,7 +380,7 @@ Result Utils::SaveSdFileForAtmosphere(u64 title_id, const char *fn, void *data, 
 }
 
 bool Utils::IsHblTid(u64 tid) {
-    return (g_hbl_override_config.override_any_app && IsApplicationTid(tid)) || (!g_hbl_override_config.override_any_app && tid == g_hbl_override_config.title_id);
+    return (g_hbl_override_config.override_any_app && IsApplicationTid(tid)) || (tid == g_hbl_override_config.title_id);
 }
 
 bool Utils::HasTitleFlag(u64 tid, const char *flag) {
@@ -392,14 +390,14 @@ bool Utils::HasTitleFlag(u64 tid, const char *flag) {
         
         memset(flag_path, 0, sizeof(flag_path));
         snprintf(flag_path, sizeof(flag_path) - 1, "flags/%s.flag", flag);
-        if (OpenSdFileForAtmosphere(tid, flag_path, FS_OPEN_READ, &f)) {
+        if (R_SUCCEEDED(OpenSdFileForAtmosphere(tid, flag_path, FS_OPEN_READ, &f))) {
             fsFileClose(&f);
             return true;
         }
         
         /* TODO: Deprecate. */
         snprintf(flag_path, sizeof(flag_path) - 1, "%s.flag", flag);
-        if (OpenSdFileForAtmosphere(tid, flag_path, FS_OPEN_READ, &f)) {
+        if (R_SUCCEEDED(OpenSdFileForAtmosphere(tid, flag_path, FS_OPEN_READ, &f))) {
             fsFileClose(&f);
             return true;
         }
@@ -412,7 +410,7 @@ bool Utils::HasGlobalFlag(const char *flag) {
         FsFile f;
         char flag_path[FS_MAX_PATH] = {0};
         snprintf(flag_path, sizeof(flag_path), "/atmosphere/flags/%s.flag", flag);
-        if (fsFsOpenFile(&g_sd_filesystem, flag_path, FS_OPEN_READ, &f)) {
+        if (R_SUCCEEDED(fsFsOpenFile(&g_sd_filesystem, flag_path, FS_OPEN_READ, &f))) {
             fsFileClose(&f);
             return true;
         }
@@ -448,21 +446,20 @@ bool Utils::HasSdDisableMitMFlag(u64 tid) {
     return false;
 }
 
-Result Utils::GetKeysDown(u64 *keys) {
-    if (!Utils::IsHidAvailable() || R_FAILED(hidInitialize())) {
+Result Utils::GetKeysHeld(u64 *keys) {
+    if (!Utils::IsHidAvailable()) {
         return MAKERESULT(Module_Libnx, LibnxError_InitFail_HID);
     }
     
     hidScanInput();
-    *keys = hidKeysDown(CONTROLLER_P1_AUTO);
+    *keys = hidKeysHeld(CONTROLLER_P1_AUTO);
     
-    hidExit();
     return 0x0;
 }
 
 static bool HasOverrideKey(OverrideKey *cfg) {
     u64 kDown = 0;
-    bool keys_triggered = (R_SUCCEEDED(Utils::GetKeysDown(&kDown)) && ((kDown & cfg->key_combination) != 0));
+    bool keys_triggered = (R_SUCCEEDED(Utils::GetKeysHeld(&kDown)) && ((kDown & cfg->key_combination) != 0));
     return Utils::IsSdInitialized() && (cfg->override_by_default ^ keys_triggered);
 }
 
@@ -544,9 +541,10 @@ static int FsMitmIniHandler(void *user, const char *section, const char *name, c
     if (strcasecmp(section, "hbl_config") == 0) {
         if (strcasecmp(name, "title_id") == 0) {
             if (strcasecmp(value, "app") == 0) {
+                /* DEPRECATED */
                 g_hbl_override_config.override_any_app = true;
-            }
-            else {
+                g_hbl_override_config.title_id = 0;
+            } else {
                 u64 override_tid = strtoul(value, NULL, 16);
                 if (override_tid != 0) {
                     g_hbl_override_config.title_id = override_tid;
@@ -554,6 +552,14 @@ static int FsMitmIniHandler(void *user, const char *section, const char *name, c
             }
         } else if (strcasecmp(name, "override_key") == 0) {
             g_hbl_override_config.override_key = ParseOverrideKey(value);
+        } else if (strcasecmp(name, "override_any_app") == 0) {
+            if (strcasecmp(value, "true") == 0 || strcasecmp(value, "1") == 0) {
+                g_hbl_override_config.override_any_app = true;
+            } else if (strcasecmp(value, "false") == 0 || strcasecmp(value, "0") == 0) {
+                g_hbl_override_config.override_any_app = false;
+            } else {
+                /* I guess we default to not changing the value? */
+            }
         }
     } else if (strcasecmp(section, "default_config") == 0) {
         if (strcasecmp(name, "override_key") == 0) {
