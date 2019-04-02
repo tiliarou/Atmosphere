@@ -16,8 +16,9 @@
 #include <cstring>
 #include <cstdlib>
 #include <switch.h>
+#include <stratosphere.hpp>
+
 #include "fs_path_utils.hpp"
-#include "fs_results.hpp"
 
 Result FsPathUtils::VerifyPath(const char *path, size_t max_path_len, size_t max_name_len) {
     const char *cur = path;
@@ -27,7 +28,7 @@ Result FsPathUtils::VerifyPath(const char *path, size_t max_path_len, size_t max
         const char c = *(cur++);
         /* If terminated, we're done. */
         if (c == 0) {
-            return 0;
+            return ResultSuccess;
         }
 
         /* TODO: Nintendo converts the path from utf-8 to utf-32, one character at a time. */
@@ -109,7 +110,7 @@ Result FsPathUtils::IsNormalized(bool *out, const char *path) {
                 /* It is unclear why first separator and separator are separate states... */
                 if (c == '/') {
                     *out = false;
-                    return 0;
+                    return ResultSuccess;
                 } else if (c == '.') {
                     state = PathState::CurrentDir;
                 } else {
@@ -119,7 +120,7 @@ Result FsPathUtils::IsNormalized(bool *out, const char *path) {
             case PathState::CurrentDir:
                 if (c == '/') {
                     *out = false;
-                    return 0;
+                    return ResultSuccess;
                 } else if (c == '.') {
                     state = PathState::ParentDir;
                 } else {
@@ -129,7 +130,7 @@ Result FsPathUtils::IsNormalized(bool *out, const char *path) {
             case PathState::ParentDir:
                 if (c == '/') {
                     *out = false;
-                    return 0;
+                    return ResultSuccess;
                 } else {
                     state = PathState::Normal;
                 }
@@ -137,7 +138,7 @@ Result FsPathUtils::IsNormalized(bool *out, const char *path) {
             case PathState::WindowsDriveLetter:
                 if (c == ':') {
                     *out = true;
-                    return 0;
+                    return ResultSuccess;
                 } else {
                     return ResultFsInvalidPathFormat;
                 }
@@ -150,17 +151,17 @@ Result FsPathUtils::IsNormalized(bool *out, const char *path) {
         case PathState::WindowsDriveLetter:
             return ResultFsInvalidPathFormat;
         case PathState::FirstSeparator:
+        case PathState::Normal:
+            *out = true;
+            break;
+        case PathState::CurrentDir:
+        case PathState::ParentDir:
         case PathState::Separator:
             *out = false;
             break;
-        case PathState::Normal:
-        case PathState::CurrentDir:
-        case PathState::ParentDir:
-            *out = true;
-            break;
     }
     
-    return 0;
+    return ResultSuccess;
 }
 
 Result FsPathUtils::Normalize(char *out, size_t max_out_size, const char *src, size_t *out_len) {
@@ -263,5 +264,5 @@ Result FsPathUtils::Normalize(char *out, size_t max_out_size, const char *src, s
         std::abort();
     }
     
-    return 0;
+    return ResultSuccess;
 }

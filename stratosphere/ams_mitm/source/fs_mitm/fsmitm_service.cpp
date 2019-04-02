@@ -29,6 +29,7 @@
 #include "fsmitm_layeredrom.hpp"
 
 #include "fs_subdirectory_filesystem.hpp"
+#include "fs_directory_savedata_filesystem.hpp"
 
 #include "../debug.hpp"
 
@@ -85,7 +86,7 @@ void FsMitmService::PostProcess(IMitmServiceObject *obj, IpcResponseContext *ctx
 Result FsMitmService::OpenHblWebContentFileSystem(Out<std::shared_ptr<IFileSystemInterface>> &out_fs) {
     std::shared_ptr<IFileSystemInterface> fs = nullptr;
     u32 out_domain_id = 0;
-    Result rc = 0;
+    Result rc = ResultSuccess;
     
     ON_SCOPE_EXIT {
         if (R_SUCCEEDED(rc)) {
@@ -110,22 +111,50 @@ Result FsMitmService::OpenHblWebContentFileSystem(Out<std::shared_ptr<IFileSyste
 }
 
 Result FsMitmService::OpenFileSystemWithPatch(Out<std::shared_ptr<IFileSystemInterface>> out_fs, u64 title_id, u32 filesystem_type) {
-    FsDir d;
-    if (filesystem_type != FsFileSystemType_ContentManual || !Utils::IsHblTid(title_id) || R_FAILED(Utils::OpenSdDir(AtmosphereHblWebContentDir, &d))) {
-        return RESULT_FORWARD_TO_SESSION;
+    /* Check for eligibility. */
+    {
+        FsDir d;
+        if (!Utils::IsWebAppletTid(this->title_id) || filesystem_type != FsFileSystemType_ContentManual || !Utils::IsHblTid(title_id) ||
+            R_FAILED(Utils::OpenSdDir(AtmosphereHblWebContentDir, &d))) {
+            return ResultAtmosphereMitmShouldForwardToSession;
+        }
+        fsDirClose(&d);
     }
-    fsDirClose(&d);
+
+    /* If there's an existing filesystem, don't override. */
+    /* TODO: Multiplex, overriding existing content with HBL content. */
+    {
+        FsFileSystem fs;
+        if (R_SUCCEEDED(fsOpenFileSystemWithPatchFwd(this->forward_service.get(), &fs, title_id, static_cast<FsFileSystemType>(filesystem_type)))) {
+            fsFsClose(&fs);
+            return ResultAtmosphereMitmShouldForwardToSession;
+        }
+    }
     
     return this->OpenHblWebContentFileSystem(out_fs);
 }
 
 Result FsMitmService::OpenFileSystemWithId(Out<std::shared_ptr<IFileSystemInterface>> out_fs, InPointer<char> path, u64 title_id, u32 filesystem_type) {
-    FsDir d;
-    if (filesystem_type != FsFileSystemType_ContentManual || !Utils::IsHblTid(title_id) || R_FAILED(Utils::OpenSdDir(AtmosphereHblWebContentDir, &d))) {
-        return RESULT_FORWARD_TO_SESSION;
+    /* Check for eligibility. */
+    {
+        FsDir d;
+        if (!Utils::IsWebAppletTid(this->title_id) || filesystem_type != FsFileSystemType_ContentManual || !Utils::IsHblTid(title_id) || 
+            R_FAILED(Utils::OpenSdDir(AtmosphereHblWebContentDir, &d))) {
+            return ResultAtmosphereMitmShouldForwardToSession;
+        }
+        fsDirClose(&d);
     }
-    fsDirClose(&d);
-    
+
+    /* If there's an existing filesystem, don't override. */
+    /* TODO: Multiplex, overriding existing content with HBL content. */
+    {
+        FsFileSystem fs;
+        if (R_SUCCEEDED(fsOpenFileSystemWithIdFwd(this->forward_service.get(), &fs, title_id, static_cast<FsFileSystemType>(filesystem_type), path.pointer))) {
+            fsFsClose(&fs);
+            return ResultAtmosphereMitmShouldForwardToSession;
+        }
+    }
+
     return this->OpenHblWebContentFileSystem(out_fs);
 }
 
@@ -133,7 +162,7 @@ Result FsMitmService::OpenFileSystemWithId(Out<std::shared_ptr<IFileSystemInterf
 Result FsMitmService::OpenBisStorage(Out<std::shared_ptr<IStorageInterface>> out_storage, u32 bis_partition_id) {
     std::shared_ptr<IStorageInterface> storage = nullptr;
     u32 out_domain_id = 0;
-    Result rc = 0;
+    Result rc = ResultSuccess;
     
     ON_SCOPE_EXIT {
         if (R_SUCCEEDED(rc)) {
@@ -148,7 +177,7 @@ Result FsMitmService::OpenBisStorage(Out<std::shared_ptr<IStorageInterface>> out
         FsStorage bis_storage;
         rc = fsOpenBisStorageFwd(this->forward_service.get(), &bis_storage, bis_partition_id);
         if (R_SUCCEEDED(rc)) {
-            const bool is_sysmodule = this->title_id < 0x0100000000001000ul;
+            const bool is_sysmodule = TitleIdIsSystem(this->title_id);
             const bool has_bis_write_flag = Utils::HasFlag(this->title_id, "bis_write");
             const bool has_cal0_read_flag = Utils::HasFlag(this->title_id, "cal_read");
             if (bis_partition_id == BisStorageId_Boot0) {
@@ -160,7 +189,7 @@ Result FsMitmService::OpenBisStorage(Out<std::shared_ptr<IStorageInterface>> out
                 } else {
                     /* Do not allow non-sysmodules to read *or* write CAL0. */
                     fsStorageClose(&bis_storage);
-                    return 0x320002;
+                    return ResultFsPermissionDenied;
                 }
             } else {
                 if (is_sysmodule || has_bis_write_flag) {
@@ -190,10 +219,10 @@ Result FsMitmService::OpenBisStorage(Out<std::shared_ptr<IStorageInterface>> out
 Result FsMitmService::OpenDataStorageByCurrentProcess(Out<std::shared_ptr<IStorageInterface>> out_storage) {
     std::shared_ptr<IStorageInterface> storage = nullptr;
     u32 out_domain_id = 0;
-    Result rc = 0;
+    Result rc = ResultSuccess;
     
     if (!this->should_override_contents) {
-        return RESULT_FORWARD_TO_SESSION;
+        return ResultAtmosphereMitmShouldForwardToSession;
     }
     
     bool has_cache = StorageCacheGetEntry(this->title_id, &storage);
@@ -220,7 +249,7 @@ Result FsMitmService::OpenDataStorageByCurrentProcess(Out<std::shared_ptr<IStora
                 out_domain_id = s.s.object_id;
             }
         } else {
-            rc = 0;
+            rc = ResultSuccess;
         }
         if (R_FAILED(rc)) {
             storage.reset();
@@ -246,7 +275,7 @@ Result FsMitmService::OpenDataStorageByCurrentProcess(Out<std::shared_ptr<IStora
             } else {
                 /* If we don't have anything to modify, there's no sense in maintaining a copy of the metadata tables. */
                 fsStorageClose(&data_storage);
-                rc = RESULT_FORWARD_TO_SESSION;
+                rc = ResultAtmosphereMitmShouldForwardToSession;
             }
         }
     }
@@ -261,12 +290,12 @@ Result FsMitmService::OpenDataStorageByDataId(Out<std::shared_ptr<IStorageInterf
     FsFile data_file;
     
     if (!this->should_override_contents) {
-        return RESULT_FORWARD_TO_SESSION;
+        return ResultAtmosphereMitmShouldForwardToSession;
     }
         
     std::shared_ptr<IStorageInterface> storage = nullptr;
     u32 out_domain_id = 0;
-    Result rc = 0;
+    Result rc = ResultSuccess;
     
     bool has_cache = StorageCacheGetEntry(data_id, &storage);
     
@@ -291,7 +320,7 @@ Result FsMitmService::OpenDataStorageByDataId(Out<std::shared_ptr<IStorageInterf
                 out_domain_id = s.s.object_id;
             }
         } else {
-            rc = 0;
+            rc = ResultSuccess;
         }
         if (R_FAILED(rc)) {
             storage.reset();
@@ -313,7 +342,7 @@ Result FsMitmService::OpenDataStorageByDataId(Out<std::shared_ptr<IStorageInterf
             } else {
                 /* If we don't have anything to modify, there's no sense in maintaining a copy of the metadata tables. */
                 fsStorageClose(&data_storage);
-                rc = RESULT_FORWARD_TO_SESSION;
+                rc = ResultAtmosphereMitmShouldForwardToSession;
             }
         }
     }

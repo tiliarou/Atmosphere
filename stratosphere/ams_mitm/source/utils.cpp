@@ -52,7 +52,7 @@ static HblOverrideConfig g_hbl_override_config = {
         .key_combination = KEY_L,
         .override_by_default = true
     },
-    .title_id = 0x010000000000100D,
+    .title_id = TitleId_AppletPhotoViewer,
     .override_any_app = false
 };
 
@@ -237,7 +237,7 @@ bool Utils::IsHidAvailable() {
 
 Result Utils::OpenSdFile(const char *fn, int flags, FsFile *out) {
     if (!IsSdInitialized()) {
-        return 0xFA202;
+        return ResultFsSdCardNotPresent;
     }
     
     return fsFsOpenFile(&g_sd_filesystem, fn, flags, out);
@@ -245,7 +245,7 @@ Result Utils::OpenSdFile(const char *fn, int flags, FsFile *out) {
 
 Result Utils::OpenSdFileForAtmosphere(u64 title_id, const char *fn, int flags, FsFile *out) {
     if (!IsSdInitialized()) {
-        return 0xFA202;
+        return ResultFsSdCardNotPresent;
     }
     
     char path[FS_MAX_PATH];
@@ -259,7 +259,7 @@ Result Utils::OpenSdFileForAtmosphere(u64 title_id, const char *fn, int flags, F
 
 Result Utils::OpenRomFSSdFile(u64 title_id, const char *fn, int flags, FsFile *out) {
     if (!IsSdInitialized()) {
-        return 0xFA202;
+        return ResultFsSdCardNotPresent;
     }
     
     return OpenRomFSFile(&g_sd_filesystem, title_id, fn, flags, out);
@@ -267,7 +267,7 @@ Result Utils::OpenRomFSSdFile(u64 title_id, const char *fn, int flags, FsFile *o
 
 Result Utils::OpenSdDir(const char *path, FsDir *out) {
     if (!IsSdInitialized()) {
-        return 0xFA202;
+        return ResultFsSdCardNotPresent;
     }
     
     return fsFsOpenDirectory(&g_sd_filesystem, path, FS_DIROPEN_DIRECTORY | FS_DIROPEN_FILE, out);
@@ -275,7 +275,7 @@ Result Utils::OpenSdDir(const char *path, FsDir *out) {
 
 Result Utils::OpenSdDirForAtmosphere(u64 title_id, const char *path, FsDir *out) {
     if (!IsSdInitialized()) {
-        return 0xFA202;
+        return ResultFsSdCardNotPresent;
     }
     
     char safe_path[FS_MAX_PATH];
@@ -289,7 +289,7 @@ Result Utils::OpenSdDirForAtmosphere(u64 title_id, const char *path, FsDir *out)
 
 Result Utils::OpenRomFSSdDir(u64 title_id, const char *path, FsDir *out) {
     if (!IsSdInitialized()) {
-        return 0xFA202;
+        return ResultFsSdCardNotPresent;
     }
     
     return OpenRomFSDir(&g_sd_filesystem, title_id, path, out);
@@ -340,10 +340,10 @@ bool Utils::HasSdRomfsContent(u64 title_id) {
 
 Result Utils::SaveSdFileForAtmosphere(u64 title_id, const char *fn, void *data, size_t size) {
     if (!IsSdInitialized()) {
-        return 0xFA202;
+        return ResultFsSdCardNotPresent;
     }
     
-    Result rc = 0;
+    Result rc = ResultSuccess;
     
     char path[FS_MAX_PATH];
     if (*fn == '/') {
@@ -380,7 +380,11 @@ Result Utils::SaveSdFileForAtmosphere(u64 title_id, const char *fn, void *data, 
 }
 
 bool Utils::IsHblTid(u64 tid) {
-    return (g_hbl_override_config.override_any_app && IsApplicationTid(tid)) || (tid == g_hbl_override_config.title_id);
+    return (g_hbl_override_config.override_any_app && TitleIdIsApplication(tid)) || (tid == g_hbl_override_config.title_id);
+}
+
+bool Utils::IsWebAppletTid(u64 tid) {
+    return tid == TitleId_AppletWeb || tid == TitleId_AppletOfflineWeb || tid == TitleId_AppletLoginShare || tid == TitleId_AppletWifiWebAuth;
 }
 
 bool Utils::HasTitleFlag(u64 tid, const char *flag) {
@@ -454,7 +458,7 @@ Result Utils::GetKeysHeld(u64 *keys) {
     hidScanInput();
     *keys = hidKeysHeld(CONTROLLER_P1_AUTO);
     
-    return 0x0;
+    return ResultSuccess;
 }
 
 static bool HasOverrideKey(OverrideKey *cfg) {
@@ -465,7 +469,7 @@ static bool HasOverrideKey(OverrideKey *cfg) {
 
 
 bool Utils::HasOverrideButton(u64 tid) {
-    if ((!IsApplicationTid(tid)) || (!IsSdInitialized())) {
+    if ((!TitleIdIsApplication(tid)) || (!IsSdInitialized())) {
         /* Disable button override disable for non-applications. */
         return true;
     }

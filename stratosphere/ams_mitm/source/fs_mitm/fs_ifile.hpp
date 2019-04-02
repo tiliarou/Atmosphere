@@ -18,7 +18,6 @@
 #include <switch.h>
 #include <stratosphere.hpp>
 
-#include "fs_results.hpp"
 #include "fs_shim.h"
 
 enum FsIFileCmd : u32 {
@@ -41,12 +40,16 @@ class IFile {
             }
             if (size == 0) {
                 *out = 0;
-                return 0;
+                return ResultSuccess;
             }
             if (buffer == nullptr) {
                 return ResultFsNullptrArgument;
             }
             return ReadImpl(out, offset, buffer, size);
+        }
+
+        Result Read(uint64_t *out, uint64_t offset, void *buffer, uint64_t size) {
+            return Read(out, offset, buffer, size, 0);
         }
 
         Result GetSize(uint64_t *out) {
@@ -62,7 +65,7 @@ class IFile {
 
         Result Write(uint64_t offset, void *buffer, uint64_t size, uint32_t flags) {
             if (size == 0) {
-                return 0;
+                return ResultSuccess;
             }
             if (buffer == nullptr) {
                 return ResultFsNullptrArgument;
@@ -71,8 +74,14 @@ class IFile {
             return WriteImpl(offset, buffer, size, flush);
         }
 
-        Result Write(uint64_t offset, void *buffer, uint64_t size) {
-            return Write(offset, buffer, size, false);
+        Result Write(uint64_t offset, void *buffer, uint64_t size, bool flush = false) {
+            if (size == 0) {
+                return ResultSuccess;
+            }
+            if (buffer == nullptr) {
+                return ResultFsNullptrArgument;
+            }
+            return WriteImpl(offset, buffer, size, flush);
         }
 
         Result SetSize(uint64_t size) {
@@ -162,7 +171,7 @@ class ProxyFile : public IFile {
             fsFileClose(this->base_file.get());
         }
     public:
-        virtual Result ReadImpl(u64 *out, u64 offset, void *buffer, u64 size) {
+        virtual Result ReadImpl(u64 *out, u64 offset, void *buffer, u64 size) override {
             size_t out_sz;
 
             Result rc = fsFileRead(this->base_file.get(), offset, buffer, size, &out_sz);
@@ -172,13 +181,13 @@ class ProxyFile : public IFile {
 
             return rc;
         }
-        virtual Result GetSizeImpl(u64 *out) {
+        virtual Result GetSizeImpl(u64 *out) override {
             return fsFileGetSize(this->base_file.get(), out);
         }
-        virtual Result FlushImpl() {
+        virtual Result FlushImpl() override {
             return fsFileFlush(this->base_file.get());
         }
-        virtual Result WriteImpl(u64 offset, void *buffer, u64 size, bool flush) {
+        virtual Result WriteImpl(u64 offset, void *buffer, u64 size, bool flush) override {
             Result rc = fsFileWrite(this->base_file.get(), offset, buffer, size);
             if (R_SUCCEEDED(rc)) {
                 /* libnx doesn't allow passing the flush flag. */
@@ -186,10 +195,10 @@ class ProxyFile : public IFile {
             }
             return rc;
         }
-        virtual Result SetSizeImpl(u64 size) {
+        virtual Result SetSizeImpl(u64 size) override {
             return fsFileSetSize(this->base_file.get(), size);
         }
-        virtual Result OperateRangeImpl(u32 operation_type, u64 offset, u64 size, FsRangeInfo *out_range_info) {
+        virtual Result OperateRangeImpl(u32 operation_type, u64 offset, u64 size, FsRangeInfo *out_range_info) override {
             return fsFileOperateRange(this->base_file.get(), operation_type, offset, size, out_range_info);
         }
 };

@@ -19,8 +19,6 @@
 #include <stratosphere.hpp>
 #include "fs_shim.h"
 
-#include "fs_results.hpp"
-
 #include "../debug.hpp"
 
 enum FsIStorageCmd : u32 {
@@ -104,7 +102,7 @@ class IROStorage : public IStorage {
             return ResultFsUnsupportedOperation;
         };
         virtual Result Flush() final {
-            return 0x0;
+            return ResultSuccess;
         };
         virtual Result SetSize(u64 size) final {
             (void)(size);

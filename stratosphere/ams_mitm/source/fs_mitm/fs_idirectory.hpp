@@ -18,8 +18,6 @@
 #include <switch.h>
 #include <stratosphere.hpp>
 
-#include "fs_results.hpp"
-
 enum FsIDirectoryCmd : u32 {
     FsIDirectoryCmd_Read = 0,
     FsIDirectoryCmd_GetEntryCount = 1,
@@ -35,7 +33,7 @@ class IDirectory {
             }
             if (max_entries == 0) {
                 *out_count = 0;
-                return 0;
+                return ResultSuccess;
             }
             if (out_entries == nullptr) {
                 return ResultFsNullptrArgument;
