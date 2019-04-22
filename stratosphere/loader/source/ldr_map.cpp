@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,7 +18,6 @@
 #include <cstdio>
 
 #include "ldr_map.hpp"
-#include "ldr_random.hpp"
 
 Result MapUtils::LocateSpaceForMap(u64 *out, u64 out_size) {
     if (kernelAbove200()) {
@@ -38,8 +37,8 @@ Result MapUtils::MapCodeMemoryForProcess(Handle process_h, bool is_64_bit_addres
 }
 
 Result MapUtils::LocateSpaceForMapModern(u64 *out, u64 out_size) {
-    MemoryInfo mem_info = {0};
-    AddressSpaceInfo address_space = {0};
+    MemoryInfo mem_info = {};
+    AddressSpaceInfo address_space = {};
     u32 page_info = 0;
     u64 cur_base = 0, cur_end = 0;
     Result rc;
@@ -94,7 +93,7 @@ Result MapUtils::LocateSpaceForMapModern(u64 *out, u64 out_size) {
 
 
 Result MapUtils::LocateSpaceForMapDeprecated(u64 *out, u64 out_size) {
-    MemoryInfo mem_info = {0};
+    MemoryInfo mem_info = {};
     u32 page_info = 0;
     Result rc;
     
@@ -128,7 +127,7 @@ Result MapUtils::LocateSpaceForMapDeprecated(u64 *out, u64 out_size) {
 }
 
 Result MapUtils::MapCodeMemoryForProcessModern(Handle process_h, u64 base_address, u64 size, u64 *out_code_memory_address) {
-    AddressSpaceInfo address_space = {0};
+    AddressSpaceInfo address_space = {};
     Result rc;
     
     if (R_FAILED((rc = GetAddressSpaceInfo(&address_space, process_h)))) {
@@ -142,7 +141,7 @@ Result MapUtils::MapCodeMemoryForProcessModern(Handle process_h, u64 base_addres
     u64 try_address;
     for (unsigned int i = 0; i < 0x200; i++) {
         while (true) {
-            try_address = address_space.addspace_base + (RandomUtils::GetRandomU64((u64)(address_space.addspace_size - size) >> 12) << 12);
+            try_address = address_space.addspace_base + (StratosphereRandomUtils::GetRandomU64((u64)(address_space.addspace_size - size) >> 12) << 12);
             if (address_space.heap_size && (address_space.heap_base <= try_address + size - 1 && try_address <= address_space.heap_end - 1)) {
                 continue;
             }
@@ -179,7 +178,7 @@ Result MapUtils::MapCodeMemoryForProcessDeprecated(Handle process_h, bool is_64_
         
     u64 try_address;
     for (unsigned int i = 0; i < 0x200; i++) {
-        try_address = addspace_base + (RandomUtils::GetRandomU64((u64)(addspace_size - size) >> 12) << 12);
+        try_address = addspace_base + (StratosphereRandomUtils::GetRandomU64((u64)(addspace_size - size) >> 12) << 12);
         rc = svcMapProcessCodeMemory(process_h, try_address, base_address, size);
         if (rc != ResultKernelInvalidMemoryState) {
             break;

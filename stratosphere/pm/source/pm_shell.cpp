@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -110,4 +110,16 @@ Result ShellService::BoostSystemThreadsResourceLimit() {
     /* Until this command is called to double that amount to 0xC0. */
     /* We will simply not reduce the number of system threads available for no reason. */
     return ResultSuccess;
+}
+
+
+Result ShellService::GetUnimplementedEventHandle(Out<CopiedHandle> event) {
+    /* In 8.0.0, Nintendo added this command which should return an event handle. */
+    /* In addition, they also added code to create a new event in the global PM constructor. */
+    /* However, nothing signals this event, and this command currently does std::abort();. */
+    /* We will oblige. */
+    std::abort();
+    
+    /* TODO: Return an event handle, once N makes this command a real thing in the future. */
+    /* TODO: return ResultSuccess; */
 }

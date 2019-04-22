@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -32,7 +32,7 @@ class FsDirUtils {
                 return rc;
             }
 
-            const size_t parent_len = strnlen(work_path.str, sizeof(work_path.str - 1));
+            const size_t parent_len = strnlen(work_path.str, sizeof(work_path.str) - 1);
 
             /* Read and handle entries. */
             while (true) {
@@ -132,6 +132,9 @@ class FsDirUtils {
         static Result CopyDirectoryRecursively(IFileSystem *fs, const FsPath &dst_path, const FsPath &src_path, void *work_buf, size_t work_buf_size) {
             return CopyDirectoryRecursively(fs, fs, dst_path, src_path, work_buf, work_buf_size);
         }
+        
+        /* Ensure directory existence. */
+        static Result EnsureDirectoryExists(IFileSystem *fs, const FsPath &path);
 
         /* Other Utility. */
         template<typename F>

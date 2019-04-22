@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -29,8 +29,8 @@
 
 #include "ini.h"
 
-static FsFileSystem g_CodeFileSystem = {0};
-static FsFileSystem g_HblFileSystem = {0};
+static FsFileSystem g_CodeFileSystem = {};
+static FsFileSystem g_HblFileSystem = {};
 
 static std::vector<u64> g_created_titles;
 static bool g_has_initialized_fs_dev = false;

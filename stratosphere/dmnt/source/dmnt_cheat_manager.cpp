@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -886,7 +886,7 @@ Result DmntCheatManager::ForceOpenCheatProcess() {
     {
         LoaderModuleInfo proc_modules[2];
         u32 num_modules;
-        if (R_FAILED((rc = ldrDmntGetModuleInfos(g_cheat_process_metadata.process_id, proc_modules, sizeof(proc_modules), &num_modules)))) {
+        if (R_FAILED((rc = ldrDmntGetModuleInfos(g_cheat_process_metadata.process_id, proc_modules, sizeof(proc_modules)/sizeof(proc_modules[0]), &num_modules)))) {
             return rc;
         }
 
@@ -981,7 +981,7 @@ void DmntCheatManager::OnNewApplicationLaunch() {
     {
         LoaderModuleInfo proc_modules[2];
         u32 num_modules;
-        if (R_FAILED((rc = ldrDmntGetModuleInfos(g_cheat_process_metadata.process_id, proc_modules, sizeof(proc_modules), &num_modules)))) {
+        if (R_FAILED((rc = ldrDmntGetModuleInfos(g_cheat_process_metadata.process_id, proc_modules, sizeof(proc_modules)/sizeof(proc_modules[0]), &num_modules)))) {
             fatalSimple(rc);
         }
 

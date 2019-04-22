@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,9 +23,9 @@
 #include "debug.hpp"
 #include "utils.hpp"
 #include "ini.h"
-#include "sha256.h"
 
 #include "set_mitm/setsys_settings_items.hpp"
+#include "bpc_mitm/bpcmitm_reboot_manager.hpp"
 
 static FsFileSystem g_sd_filesystem = {0};
 static HosSignal g_sd_signal;
@@ -124,12 +124,8 @@ void Utils::InitializeThreadFunc(void *args) {
                 u32 cal0_size = ((u32 *)g_cal0_backup)[2];
                 is_cal0_valid &= cal0_size + 0x40 <= ProdinfoSize;
                 if (is_cal0_valid) {
-                    struct sha256_state sha_ctx;
                     u8 calc_hash[0x20];
-                    sha256_init(&sha_ctx);
-                    sha256_update(&sha_ctx, g_cal0_backup + 0x40, cal0_size);
-                    sha256_finalize(&sha_ctx);
-                    sha256_finish(&sha_ctx, calc_hash);
+                    sha256CalculateHash(calc_hash, g_cal0_backup + 0x40, cal0_size);
                     is_cal0_valid &= memcmp(calc_hash, g_cal0_backup + 0x20, sizeof(calc_hash)) == 0;
                 }
                 has_auto_backup = is_cal0_valid;
@@ -644,4 +640,20 @@ Result Utils::GetSettingsItemValueSize(const char *name, const char *key, u64 *o
 
 Result Utils::GetSettingsItemValue(const char *name, const char *key, void *out, size_t max_size, u64 *out_size) {
     return SettingsItemManager::GetValue(name, key, out, max_size, out_size);
+}
+
+Result Utils::GetSettingsItemBooleanValue(const char *name, const char *key, bool *out) {
+    u8 val = 0;
+    u64 out_size;
+    Result rc = Utils::GetSettingsItemValue(name, key, &val, sizeof(val), &out_size);
+    if (R_SUCCEEDED(rc)) {
+        if (out) {
+            *out = val != 0;
+        }
+    }
+    return rc;
+}
+
+void Utils::RebootToFatalError(AtmosphereFatalErrorContext *ctx) {
+    BpcRebootManager::RebootForFatalError(ctx);
 }

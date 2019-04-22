@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -300,6 +300,15 @@ Result Registration::GetServiceForPid(u64 pid, u64 service, Handle *out) {
     /* If the service has bytes after a null terminator, that's no good. */
     if (service_name_len != 8 && (service >> (8 * service_name_len))) {
         return ResultSmInvalidServiceName;
+    }
+
+    /* In 8.0.0, Nintendo removed the service apm:p -- however, all homebrew attempts to get */
+    /* a handle to this when calling appletInitialize(). Because hbl has access to all services, */
+    /* This would return true, and homebrew would *wait forever* trying to get a handle to a service */
+    /* that will never register. Thus, in the interest of not breaking every single piece of homebrew */
+    /* we will provide a little first class help. */
+    if (GetRuntimeFirmwareVersion() >= FirmwareVersion_800 && service == EncodeNameConstant("apm:p")) {
+        return ResultSmNotAllowed;
     }
     
     if (!IsInitialProcess(pid)) {

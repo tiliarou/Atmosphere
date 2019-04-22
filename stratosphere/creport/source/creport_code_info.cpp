@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -136,7 +136,7 @@ bool CodeList::TryFindCodeRegion(Handle debug_handle, u64 guess, u64 *address) {
             return true;
         }
         
-        guess -= 4;
+        guess = mi.addr - 4;
     }
     return false;
 }

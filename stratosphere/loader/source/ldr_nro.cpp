@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,11 +20,9 @@
 #include <cstdio>
 #include <functional>
 #include <cstring>
-#include "sha256.h"
 #include "ldr_nro.hpp"
 #include "ldr_registration.hpp"
 #include "ldr_map.hpp"
-#include "ldr_random.hpp"
 
 Result NroUtils::ValidateNrrHeader(NrrHeader *header, u64 size, u64 title_id_min) {
     if (header->magic != MAGIC_NRR0) {
@@ -47,13 +45,12 @@ Result NroUtils::ValidateNrrHeader(NrrHeader *header, u64 size, u64 title_id_min
 }
 
 Result NroUtils::LoadNro(Registration::Process *target_proc, Handle process_h, u64 nro_heap_address, u64 nro_heap_size, u64 bss_heap_address, u64 bss_heap_size, u64 *out_address) {
-    NroHeader nro_hdr = {0};
-    MappedCodeMemory mcm_nro = {0};
-    MappedCodeMemory mcm_bss = {0};
+    NroHeader nro_hdr = {};
+    MappedCodeMemory mcm_nro = {};
+    MappedCodeMemory mcm_bss = {};
     unsigned int i;
     Result rc = ResultSuccess;
     u8 nro_hash[0x20];
-    struct sha256_state sha_ctx;
 
     /* Perform cleanup on failure. */
     ON_SCOPE_EXIT {
@@ -108,10 +105,7 @@ Result NroUtils::LoadNro(Registration::Process *target_proc, Handle process_h, u
             return rc;
         }
         
-        sha256_init(&sha_ctx);
-        sha256_update(&sha_ctx, (u8 *)mcm_nro.mapped_address, nro_hdr.nro_size);
-        sha256_finalize(&sha_ctx);
-        sha256_finish(&sha_ctx, nro_hash);
+        sha256CalculateHash(nro_hash, mcm_nro.mapped_address, nro_hdr.nro_size);
     }
 
     /* Unmap the NRO. */

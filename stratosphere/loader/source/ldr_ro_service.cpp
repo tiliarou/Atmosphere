@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -72,7 +72,7 @@ Result RelocatableObjectsService::UnloadNro(PidDescriptor pid_desc, u64 nro_addr
 Result RelocatableObjectsService::LoadNrr(PidDescriptor pid_desc, u64 nrr_address, u64 nrr_size) {
     Result rc = ResultSuccess;
     Registration::Process *target_proc = NULL;
-    MappedCodeMemory nrr_info = {0};
+    MappedCodeMemory nrr_info = {};
     ON_SCOPE_EXIT {
         if (R_FAILED(rc) && nrr_info.IsActive()) {
             nrr_info.Close();

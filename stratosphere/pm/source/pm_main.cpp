@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -42,6 +42,17 @@ extern "C" {
     void __libnx_initheap(void);
     void __appInit(void);
     void __appExit(void);
+
+    /* Exception handling. */
+    alignas(16) u8 __nx_exception_stack[0x1000];
+    u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
+    void __libnx_exception_handler(ThreadExceptionDump *ctx);
+    u64 __stratosphere_title_id = TitleId_Pm;
+    void __libstratosphere_exception_handler(AtmosphereFatalErrorContext *ctx);
+}
+
+void __libnx_exception_handler(ThreadExceptionDump *ctx) {
+    StratosphereCrashHandler(ctx);
 }
 
 
@@ -168,7 +179,7 @@ int main(int argc, char **argv)
     /* TODO: Create services. */
     server_manager->AddWaitable(new ServiceServer<ShellService>("pm:shell", 3));
     server_manager->AddWaitable(new ServiceServer<DebugMonitorService>("pm:dmnt", 2));
-    server_manager->AddWaitable(new ServiceServer<BootModeService>("pm:bm", 5));
+    server_manager->AddWaitable(new ServiceServer<BootModeService>("pm:bm", 6));
     server_manager->AddWaitable(new ServiceServer<InformationService>("pm:info", 1));
     
     /* Loop forever, servicing our services. */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -198,13 +198,18 @@ class IFileSystem {
 
 class IFileSystemInterface : public IServiceObject {
     private:
-        std::unique_ptr<IFileSystem> base_fs;
+        std::unique_ptr<IFileSystem> unique_fs;
+        std::shared_ptr<IFileSystem> shared_fs;
+        IFileSystem *base_fs;
     public:
-        IFileSystemInterface(IFileSystem *fs) : base_fs(fs) {
-            /* ... */
+        IFileSystemInterface(IFileSystem *fs) : unique_fs(fs) {
+            this->base_fs = this->unique_fs.get();
         };
-        IFileSystemInterface(std::unique_ptr<IFileSystem> fs) : base_fs(std::move(fs)) {
-            /* ... */
+        IFileSystemInterface(std::unique_ptr<IFileSystem> fs) : unique_fs(std::move(fs)) {
+            this->base_fs = this->unique_fs.get();
+        };
+        IFileSystemInterface(std::shared_ptr<IFileSystem> fs) : shared_fs(fs) {
+            this->base_fs = this->shared_fs.get();
         };
 
     private:

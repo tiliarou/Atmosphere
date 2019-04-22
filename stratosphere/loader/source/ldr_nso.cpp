@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,11 +18,9 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
-#include "sha256.h"
 #include "lz4.h"
 #include "ldr_nso.hpp"
 #include "ldr_map.hpp"
-#include "ldr_random.hpp"
 #include "ldr_patcher.hpp"
 #include "ldr_content_management.hpp"
 
@@ -108,7 +106,7 @@ Result NsoUtils::LoadNsoHeaders(u64 title_id) {
     
     /* Zero out the cache. */
     std::fill(g_nso_present, g_nso_present + NSO_NUM_MAX, false);
-    std::fill(g_nso_headers, g_nso_headers + NSO_NUM_MAX, (const NsoUtils::NsoHeader &){0});
+    std::fill(g_nso_headers, g_nso_headers + NSO_NUM_MAX, NsoUtils::NsoHeader{});
     
     for (unsigned int i = 0; i < NSO_NUM_MAX; i++) {
         f_nso = OpenNso(i, title_id);
@@ -162,7 +160,8 @@ Result NsoUtils::ValidateNsoLoadSet() {
 
 
 Result NsoUtils::CalculateNsoLoadExtents(u32 addspace_type, u32 args_size, NsoLoadExtents *extents) {
-    *extents = (const NsoUtils::NsoLoadExtents){0};
+    *extents = {};
+
     /* Calculate base offsets. */
     for (unsigned int i = 0; i < NSO_NUM_MAX; i++) {
         if (g_nso_present[i]) {
@@ -226,7 +225,7 @@ Result NsoUtils::CalculateNsoLoadExtents(u32 addspace_type, u32 args_size, NsoLo
     
     u64 aslr_slide = 0;
     if (addspace_type & 0x20) {
-        aslr_slide = RandomUtils::GetRandomU64((addspace_size - extents->total_size) >> 21) << 21;
+        aslr_slide = StratosphereRandomUtils::GetRandomU64((addspace_size - extents->total_size) >> 21) << 21;
     }
     
     extents->base_address = addspace_start + aslr_slide;
@@ -275,11 +274,7 @@ Result NsoUtils::LoadNsoSegment(u64 title_id, unsigned int index, unsigned int s
     
     if (check_hash) {
         u8 hash[0x20] = {0};
-        struct sha256_state sha_ctx;
-        sha256_init(&sha_ctx);
-        sha256_update(&sha_ctx, dst_addr, out_size);
-        sha256_finalize(&sha_ctx);
-        sha256_finish(&sha_ctx, hash);
+        sha256CalculateHash(hash, dst_addr, out_size);
 
         if (std::memcmp(g_nso_headers[index].section_hashes[segment], hash, sizeof(hash))) {
             return ResultLoaderInvalidNso;

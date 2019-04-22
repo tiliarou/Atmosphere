@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -84,7 +84,7 @@ FILE *NpdmUtils::OpenNpdm(u64 title_id) {
 Result NpdmUtils::LoadNpdmInternal(FILE *f_npdm, NpdmUtils::NpdmCache *cache) {
     Result rc;
     
-    cache->info = (const NpdmUtils::NpdmInfo){0};
+    cache->info = {};
 
     rc = ResultFsPathNotFound;
     if (f_npdm == NULL) {
@@ -117,8 +117,15 @@ Result NpdmUtils::LoadNpdmInternal(FILE *f_npdm, NpdmUtils::NpdmCache *cache) {
         return rc;
     }
     
-    if (info->header->mmu_flags > 0xF) {
-        return rc;
+    /* 7.0.0 added 0x10 as a valid bit to NPDM flags. */
+    if (GetRuntimeFirmwareVersion() >= FirmwareVersion_700) {
+        if (info->header->mmu_flags > 0x1F) {
+            return rc;
+        }
+    } else {
+        if (info->header->mmu_flags > 0xF) {
+            return rc;
+        }
     }
     
     if (info->header->aci0_offset < sizeof(NpdmUtils::NpdmHeader) || info->header->aci0_size < sizeof(NpdmUtils::NpdmAci0) || info->header->aci0_offset + info->header->aci0_size > npdm_size) {
@@ -519,6 +526,6 @@ u32 NpdmUtils::GetApplicationTypeRaw(u32 *caps, size_t num_caps) {
 
 void NpdmUtils::InvalidateCache(u64 tid) {
     if (g_npdm_cache.info.title_id == tid) {
-        g_npdm_cache.info = (const NpdmUtils::NpdmInfo){0};
+        g_npdm_cache.info = {};
     }
 }

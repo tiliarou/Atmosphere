@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Atmosphère-NX
+ * Copyright (c) 2018-2019 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -246,6 +246,11 @@ void EmbeddedBoot2::Main() {
     for (auto &launch_program : g_additional_launch_programs) {
         if (!maintenance || std::get<bool>(launch_program)) {
             LaunchTitle(std::get<u64>(launch_program), FsStorageId_NandSystem, 0, NULL);
+        }
+
+        /* In 7.0.0, Npns was added to the list of titles to launch during maintenance. */
+        if (maintenance && std::get<u64>(launch_program) == TitleId_Npns && GetRuntimeFirmwareVersion() >= FirmwareVersion_700) {
+            LaunchTitle(TitleId_Npns, FsStorageId_NandSystem, 0, NULL);
         }
     }
     
