@@ -23,14 +23,25 @@
 
 class DriveFileSystem : public IFileSystem {
     private:
-        Drive &drive;
+        u32 drvidx;
         
     public:
-        DriveFileSystem(Drive &drv) : drive(drv) {
+        DriveFileSystem(u32 idx) : drvidx(idx) {
         }
 
         ~DriveFileSystem() {
-            drive.Close();
+        }
+
+        DriveData *GetDriveAccess();
+
+        std::string GetFullPath(const FsPath &path) {
+            DriveData *data = GetDriveAccess();
+            if(data == NULL) {
+                return "";
+            }
+            std::string str = std::string(data->mountname) + ":" + std::string(path.str);
+            printf("GetFullPath (path = \"%s\")\n", str.c_str());
+            return str;
         }
         
     public:

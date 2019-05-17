@@ -30,7 +30,7 @@ extern "C" {
 
     u32 __nx_applet_type = AppletType_None;
 
-    #define INNER_HEAP_SIZE 0x60000
+    #define INNER_HEAP_SIZE 0x200000
     size_t nx_inner_heap_size = INNER_HEAP_SIZE;
     char   nx_inner_heap[INNER_HEAP_SIZE];
 
@@ -64,11 +64,6 @@ void __appInit(void) {
     SetFirmwareVersionForLibnx();
 
     DoWithSmSession([&]() {
-        rc = setsysInitialize();
-        if (R_FAILED(rc)) {
-            std::abort();
-        }
-
         rc = fsInitialize();
         if (R_FAILED(rc)) {
             std::abort();
@@ -91,7 +86,6 @@ void __appInit(void) {
 void __appExit(void) {
     fsdevUnmountAll();
     fsExit();
-    setsysExit();
 }
 
 struct FspUsbManagerOptions {

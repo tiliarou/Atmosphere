@@ -10,11 +10,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <switch.h>
+#include <vector>
 #include "ff.h"
 #include "diskio.h"
-#include "../fspusb_scsi_context.hpp"
+#include "../fspusb_drive.hpp"
 
-SCSIBlockPartition *drive_blocks[8];
+extern std::vector<DriveData> drives;
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -24,14 +25,7 @@ extern "C" DSTATUS disk_status (
 	BYTE pdrv		/* Physical drive nmuber to identify the drive */
 )
 {
-	DSTATUS stat;
-	int result;
-
-	if(drive_blocks[pdrv] != nullptr) {
-		return 0;
-	}
-
-	return STA_NOINIT;
+	return 0;
 }
 
 
@@ -44,14 +38,7 @@ extern "C" DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-	DSTATUS stat;
-	int result;
-
-	if(pdrv < 8) {
-		return 0;
-	}
-
-	return STA_NOINIT;
+	return 0;
 }
 
 
@@ -67,14 +54,11 @@ extern "C" DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
-
-	DRESULT res;
-
-	if(drive_blocks[pdrv] != nullptr) {
-		int wres = drive_blocks[pdrv]->read_sectors(buff, sector, count);
-		if(wres != 0) {
-			return RES_OK;
-		}
+	printf("pdrv: %d, drive count: %d", pdrv, drives.size());
+	printf("capacity: %lld, block size: %d", drives[pdrv].scsi->capacity,drives[pdrv].scsi->block_size);
+	int wres = drives[pdrv].scsi->partitions[0].read_sectors(buff, sector, count);
+	if(wres != 0) {
+		return RES_OK;
 	}
 
 	return RES_PARERR;
@@ -95,13 +79,9 @@ extern "C" DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
-	DRESULT res;
-
-	if(drive_blocks[pdrv] != nullptr) {
-		int wres = drive_blocks[pdrv]->write_sectors(buff, sector, count);
-		if(wres != 0) {
-			return RES_OK;
-		}
+	int wres = drives[pdrv].scsi->partitions[0].write_sectors(buff, sector, count);
+	if(wres != 0) {
+		return RES_OK;
 	}
 
 	return RES_PARERR;
@@ -120,12 +100,5 @@ extern "C" DRESULT disk_ioctl (
 	void *buff		/* Buffer to send/receive control data */
 )
 {
-	DRESULT res;
-	int result;
-
-	if(pdrv < 8) {
-		return RES_OK;
-	}
-
-	return RES_PARERR;
+	return RES_OK;
 }

@@ -23,26 +23,19 @@
 
 extern HosMutex usb_lock;
 
-Result FspUsbService::GetDriveCount(Out<u32> count) {
-    s32 ocount = 0;
-    Result rc = 0;
-    std::scoped_lock<HosMutex> lck(usb_lock);
-    rc = USBDriveSystem::UpdateAvailableInterfaces(10000000000L);
-    if(R_FAILED(rc)) return rc;
-    rc = USBDriveSystem::CountDrives(&ocount);
-    if(R_FAILED(rc)) return rc;
-    count.SetValue((u32)ocount);
+Result FspUsbService::UpdateDrives(Out<u32> count) {
+    Result rc = USBDriveSystem::Update();
+    if(rc == 0) {
+        u32 drvcount = USBDriveSystem::GetDriveCount();
+        count.SetValue(drvcount);
+    }
     return rc;
 }
 
 Result FspUsbService::OpenDriveFileSystem(u32 index, Out<std::shared_ptr<IFileSystemInterface>> out) {
-    Result rc = 0;
-    auto drv = USBDriveSystem::OpenDrive((u32)index);
-    if(drv.IsOpened()) {
-        rc = drv.Mount(index);
-        if(rc != 0) return rc;
-        out.SetValue(std::make_shared<IFileSystemInterface>(std::make_shared<DriveFileSystem>(drv)));
-        return 0;
+    if(index >= USBDriveSystem::GetDriveCount()) {
+        return MAKERESULT(455, 10);
     }
-    return MAKERESULT(455, 1);
+    out.SetValue(std::make_shared<IFileSystemInterface>(std::make_shared<DriveFileSystem>(index)));
+    return 0;
 }

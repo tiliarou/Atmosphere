@@ -17,6 +17,7 @@
 #pragma once
 #include <switch.h>
 #include <malloc.h>
+#include <memory> 
 #include "fspusb_scsi_command.hpp"
 
 class SCSIDevice
@@ -89,10 +90,10 @@ class SCSIBlock
         SCSIBlockPartition partitions[4];
         MBRPartition partition_infos[4];
 
-        SCSIDevice *device;
+        std::shared_ptr<SCSIDevice> device;
 
         SCSIBlock(){}
-        SCSIBlock(SCSIDevice *device_);
+        SCSIBlock(std::shared_ptr<SCSIDevice> device_);
         int read_sectors(uint8_t *buffer, uint32_t sector_offset, uint32_t num_sectors);
         int write_sectors(const uint8_t *buffer, uint32_t sector_offset, uint32_t num_sectors);
 };

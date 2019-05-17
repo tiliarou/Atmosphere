@@ -22,17 +22,17 @@
 #include "fspusb_drivefilesystem.hpp"
 
 enum FspUsbCmd {
-    FspUsbCmd_GetDriveCount = 0,
+    FspUsbCmd_UpdateDrives = 0,
     FspUsbCmd_OpenDriveFileSystem = 1,
 };
 
 class FspUsbService final : public IServiceObject {
     protected:
-        Result GetDriveCount(Out<u32> count);
+        Result UpdateDrives(Out<u32> count);
         Result OpenDriveFileSystem(u32 index, Out<std::shared_ptr<IFileSystemInterface>> out);
     public:
         DEFINE_SERVICE_DISPATCH_TABLE {
-            MakeServiceCommandMeta<FspUsbCmd_GetDriveCount, &FspUsbService::GetDriveCount>(),
+            MakeServiceCommandMeta<FspUsbCmd_UpdateDrives, &FspUsbService::UpdateDrives>(),
             MakeServiceCommandMeta<FspUsbCmd_OpenDriveFileSystem, &FspUsbService::OpenDriveFileSystem>(),
         };
 };

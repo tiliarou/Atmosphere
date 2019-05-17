@@ -21,28 +21,12 @@
 #include <cstdarg>
 #include "fspusb_scsi_context.hpp"
 
-void clog(const char *fmt, ...)
-{
-    char buf[256] = {0};
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(buf, 256, fmt, args);
-    FILE *f = fopen("sdmc:/logger.log", "a");
-    fwrite(buf, 256, 1, f);
-    fclose(f);
-    va_end(args);
-}
-
-#define printf clog
-
-#define abort() { printf("Abort!"); }
-
 SCSICommandStatus SCSIDevice::read_csw() {
     uint32_t num_bytes;
     Result res = usbHsEpPostBuffer(out_endpoint, usb_bounce_buffer_c, 0x10, &num_bytes);
     if(R_FAILED(res))
     {
-        printf("read_csw usb fail %08x\n", res);
+        printf("read_csw usb fail (handle: %d) %08x\n", out_endpoint->s.handle, res);
     }
     if(num_bytes != 13)
     {
@@ -97,7 +81,6 @@ SCSICommandStatus SCSIDevice::transfer_cmd(SCSICommand *c, uint8_t *buffer, size
                 if(R_FAILED(res))
                 {
                     printf("usbHsEpPostBuffer failed %08x\n", res);
-                    abort();
                 }
 
                 if(transferred == 13)
@@ -125,7 +108,6 @@ SCSICommandStatus SCSIDevice::transfer_cmd(SCSICommand *c, uint8_t *buffer, size
                 if(R_FAILED(res))
                 {
                     printf("usbHsEpPostBuffer failed %08x\n", res);
-                    abort();
                 }
                 total_transferred += transferred;
             }
@@ -146,7 +128,7 @@ SCSICommandStatus SCSIDevice::transfer_cmd(SCSICommand *c, uint8_t *buffer, size
     return w;
 }
 
-SCSIBlock::SCSIBlock(SCSIDevice *device_) {
+SCSIBlock::SCSIBlock(std::shared_ptr<SCSIDevice> device_) {
     device = device_;
     SCSIInquiryCommand inquiry(36);
     SCSITestUnitReadyCommand test_unit_ready;
@@ -195,7 +177,7 @@ int SCSIBlock::write_sectors(const uint8_t *buffer, uint32_t sector_offset, uint
 SCSIBlockPartition::SCSIBlockPartition(SCSIBlock *block_, MBRPartition partition_info) {
     block = block_;
     start_lba_offset = partition_info.start_lba;
-    lba_size = partition_info.num_sectors;	
+    lba_size = partition_info.num_sectors;
 }
 
 int SCSIBlockPartition::read_sectors(uint8_t *buffer, uint32_t sector_offset, uint32_t num_sectors) {

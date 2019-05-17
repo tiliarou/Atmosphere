@@ -28,36 +28,24 @@ enum class DriveFileSystemType {
     exFAT,
 };
 
-class Drive {
-    public:
-        Drive(UsbHsClientIfSession client, UsbHsClientEpSession in, UsbHsClientEpSession out);
-        Result Mount(u32 index);
-        Result Unmount();
-        bool IsMounted();
-        DriveFileSystemType GetFSType();
-        bool IsOk();
-        bool IsOpened();
-        void Close();
+#define DRIVE_MAX_VALUE 10 // Way more that actual max count, in order to avoid issues
 
-    private:
-        SCSIDevice device;
-        SCSIBlock block;
-        UsbHsClientIfSession client;
-        UsbHsClientEpSession in;
-        UsbHsClientEpSession out;
-        bool open;
-        bool mounted;
-        char mountname[10];
-        FATFS fs;
+struct DriveData {
+    char mountname[0x10];
+    UsbHsClientIfSession usbif;
+    UsbHsClientEpSession usbinep;
+    UsbHsClientEpSession usboutep;
+    std::shared_ptr<SCSIDevice> device;
+    std::shared_ptr<SCSIBlock> scsi;
+    FATFS *fatfs;
 };
 
 class USBDriveSystem {
     public:
         static Result Initialize();
         static bool IsInitialized();
+        static Result Update();
         static Result WaitForDrives(s64 timeout = -1);
-        static Result UpdateAvailableInterfaces(s64 timeout);
         static void Finalize();
-        static Result CountDrives(s32 *out);
-        static Drive OpenDrive(s32 idx);
+        static u32 GetDriveCount();
 };

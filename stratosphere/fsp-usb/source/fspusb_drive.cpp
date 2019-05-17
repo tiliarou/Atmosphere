@@ -26,89 +26,8 @@
 static bool init = false;
 static UsbHsInterfaceFilter ifilter;
 static Event ifaceavailable;
-static UsbHsInterface ifaces[8];
-static s32 icount = 0;
-HosMutex usb_lock;
-
-extern SCSIBlockPartition *drive_blocks[8];
-
-Drive::Drive(UsbHsClientIfSession client, UsbHsClientEpSession in, UsbHsClientEpSession out) : client(client), in(in), out(out), open(false), mounted(false) {
-    if((strlen(client.inf.pathstr) > 0) && (usbHsIfGetID(&client) >= 0)) {
-        device = SCSIDevice(&client, &in, &out);
-        open = true;
-    }
-}
-
-Result Drive::Mount(u32 index) {
-    if(!open) return MAKERESULT(199, 1);
-    if(mounted) return 0;
-    block = SCSIBlock(&device);
-    drive_blocks[index] = &block.partitions[0];
-    memset(&fs, 0, sizeof(FATFS));
-    char name[16] = {0};
-    sprintf(name, "usb-%d", index);
-    FRESULT rc = f_mount(&fs, name, 1);
-    if(rc != FR_OK) return MAKERESULT(199, rc + 100);
-    memset(mountname, 0, 10);
-    strcpy(mountname, name);
-    mounted = true;
-    return 0;
-}
-
-Result Drive::Unmount() {
-    if(!open) return MAKERESULT(199, 1);
-    if(!mounted) return 0;
-    f_mount(NULL, mountname, 1);
-    mounted = false;
-    return 0;
-}
-
-bool Drive::IsMounted() {
-    return mounted;
-}
-
-DriveFileSystemType Drive::GetFSType() {
-    u8 rawtype = fs.fs_type;
-    DriveFileSystemType fst = DriveFileSystemType::Invalid;
-    if(rawtype == FS_FAT12) fst = DriveFileSystemType::FAT12;
-    else if(rawtype == FS_FAT16) fst = DriveFileSystemType::FAT16;
-    else if(rawtype == FS_FAT32) fst = DriveFileSystemType::FAT32;
-    else if(rawtype == FS_EXFAT) fst = DriveFileSystemType::exFAT;
-    return fst;
-}
-
-bool Drive::IsOk() {
-    if(!open) return false;
-    UsbHsInterface aqifaces[8];
-    memset(aqifaces, 0, sizeof(aqifaces));
-    s32 aqicount = 0;
-    Result rc = usbHsQueryAcquiredInterfaces(aqifaces, sizeof(aqifaces), &aqicount);
-    if(rc == 0)
-    {
-        for(s32 i = 0; i < aqicount; i++)
-        {
-            UsbHsInterface *iface = &aqifaces[i];
-            if(iface->inf.ID == client.inf.inf.ID) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool Drive::IsOpened() {
-    return open;
-}
-
-void Drive::Close() {
-    if(!open) return;
-    Unmount();
-    usbHsEpClose(&in);
-    usbHsEpClose(&out);
-    usbHsIfResetDevice(&client);
-    usbHsIfClose(&client);
-    open = false;
-}
+HosMutex drive_lock;
+std::vector<DriveData> drives;
 
 Result USBDriveSystem::Initialize() {
     if(init) return 0;
@@ -122,9 +41,6 @@ Result USBDriveSystem::Initialize() {
         ifilter.bInterfaceProtocol = 80;
         rc = usbHsCreateInterfaceAvailableEvent(&ifaceavailable, false, 0, &ifilter);
         if(rc == 0) {
-            for(u32 i = 0; i < 8; i++) {
-                drive_blocks[i] = nullptr;
-            }
             init = true;
         }
     }
@@ -137,14 +53,74 @@ bool USBDriveSystem::IsInitialized() {
 
 Result USBDriveSystem::WaitForDrives(s64 timeout) {
     if(!init) return LibnxError_NotInitialized;
-    return UpdateAvailableInterfaces(timeout);
+    return eventWait(&ifaceavailable, timeout);
 }
 
-Result USBDriveSystem::UpdateAvailableInterfaces(s64 timeout) {
-    Result rc = eventWait(&ifaceavailable, timeout);
-    if(rc != 0) return rc;
-    memset(ifaces, 0, sizeof(ifaces));
-    rc = usbHsQueryAvailableInterfaces(&ifilter, ifaces, sizeof(ifaces), &icount);
+Result USBDriveSystem::Update() {
+    UsbHsInterface iface_block[DRIVE_MAX_VALUE];
+    memset(iface_block, 0, sizeof(iface_block));
+    s32 iface_count = 0;
+    Result rc = 0;
+    if(!drives.empty()) {
+        rc = usbHsQueryAcquiredInterfaces(iface_block, sizeof(iface_block), &iface_count);
+        for(u32 i = 0; i < drives.size(); i++) {
+            bool ok = false;
+            for(s32 j = 0; j < iface_count; j++) {
+                if(iface_block[j].inf.ID == drives[i].scsi->device->client->ID) {
+                    ok = true;
+                    break;
+                }
+            }
+            if(!ok) {
+                f_mount(NULL, drives[i].mountname, 1);
+                usbHsEpClose(&drives[i].usbinep);
+                usbHsEpClose(&drives[i].usboutep);
+                usbHsIfResetDevice(&drives[i].usbif);
+                usbHsIfClose(&drives[i].usbif);
+                drives.erase(drives.begin() + i);
+            }
+        }
+    }
+    memset(iface_block, 0, sizeof(iface_block));
+    rc = usbHsQueryAvailableInterfaces(&ifilter, iface_block, sizeof(iface_block), &iface_count);
+    if(rc == 0) {
+        for(s32 i = 0; i < iface_count; i++) {
+            DriveData dt;
+            rc = usbHsAcquireUsbIf(&dt.usbif, &iface_block[i]);
+            if(rc == 0) {
+                for(u32 j = 0; j < 15; j++) {
+                    auto epd = &dt.usbif.inf.inf.input_endpoint_descs[j];
+                    if(epd->bLength > 0) {
+                        rc = usbHsIfOpenUsbEp(&dt.usbif, &dt.usbinep, 1, epd->wMaxPacketSize, epd);
+                        break;
+                    }
+                }
+                if(rc == 0) {
+                    for(u32 j = 0; j < 15; j++) {
+                        auto epd = &dt.usbif.inf.inf.output_endpoint_descs[j];
+                        if(epd->bLength > 0) {
+                            rc = usbHsIfOpenUsbEp(&dt.usbif, &dt.usboutep, 1, epd->wMaxPacketSize, epd);
+                            break;
+                        }
+                    }
+                    if(rc == 0) {
+                        dt.device = std::make_shared<SCSIDevice>(&dt.usbif, &dt.usbinep, &dt.usboutep);
+                        dt.scsi = std::make_shared<SCSIBlock>(dt.device);
+                        memset(dt.mountname, 0, 0x10);
+                        u32 idx = drives.size();
+                        sprintf(dt.mountname, "usb-%d", idx);
+                        dt.fatfs = (FATFS*)malloc(sizeof(FATFS));
+                        memset(dt.fatfs, 0, sizeof(FATFS));
+                        drives.push_back(dt);
+                        auto fres = f_mount(dt.fatfs, dt.mountname, 1);
+                        if(fres != FR_OK) {
+                            drives.pop_back();
+                        }
+                    }
+                }
+            }
+        }
+    }
     return rc;
 }
 
@@ -155,57 +131,6 @@ void USBDriveSystem::Finalize() {
     init = false;
 }
 
-Result USBDriveSystem::CountDrives(s32 *out) {
-    *out = icount;
-    return 0;
-}
-
-Drive USBDriveSystem::OpenDrive(s32 idx) {
-    UsbHsClientIfSession client;
-    UsbHsClientEpSession inep;
-    UsbHsClientEpSession outep;
-    memset(&client, 0, sizeof(UsbHsClientIfSession));
-    memset(&inep, 0, sizeof(UsbHsClientEpSession));
-    memset(&outep, 0, sizeof(UsbHsClientEpSession));
-    if((idx + 1) > icount) return Drive(client, inep, outep);
-    Result rc = usbHsAcquireUsbIf(&client, &ifaces[idx]);
-    if(rc == 0)
-    {
-        for(u32 i = 0; i < 15; i++)
-        {
-            auto epd = &client.inf.inf.input_endpoint_descs[i];
-            if(epd->bLength > 0)
-            {
-                rc = usbHsIfOpenUsbEp(&client, &inep, 1, epd->wMaxPacketSize, epd);
-                break;
-            }
-        }
-        for(u32 i = 0; i < 15; i++)
-        {
-            auto epd = &client.inf.inf.output_endpoint_descs[i];
-            if(epd->bLength > 0)
-            {
-                rc = usbHsIfOpenUsbEp(&client, &outep, 1, epd->wMaxPacketSize, epd);
-                break;
-            }
-        }
-    }
-    return Drive(client, inep, outep);
-}
-
-void USBMainThread(void *arg) {
-    Result rc = 0;
-
-    do
-    {
-        std::scoped_lock<HosMutex> lck(usb_lock);
-        rc = USBDriveSystem::Initialize();
-        svcSleepThread(100000000L);
-    } while(rc != 0); 
-
-    while(true) {
-        svcSleepThread(100000000L);
-    }
-
-    USBDriveSystem::Finalize();
+u32 USBDriveSystem::GetDriveCount() {
+    return drives.size();
 }

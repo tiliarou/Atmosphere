@@ -1,14 +1,22 @@
 #include "fspusb_drivefilesystem.hpp"
 
+extern std::vector<DriveData> drives;
+
+DriveData *DriveFileSystem::GetDriveAccess() {
+    if(drvidx >= drives.size()) {
+        return NULL;
+    }
+    return &drives[drvidx];
+}
+
 Result DriveFileSystem::CreateFileImpl(const FsPath &path, uint64_t size, int flags) { return 0; }
 
 Result DriveFileSystem::DeleteFileImpl(const FsPath &path) { return 0; }
 
 Result DriveFileSystem::CreateDirectoryImpl(const FsPath &path) {
-    FILE *f = fopen("sdmc:/fspusb.log", "a");
-    std::string sl = "Path: " + std::string(path.str);
-    fwrite(sl.c_str(), 1, sl.length(), f);
-    fclose(f);
+    std::string pth = GetFullPath(path);
+    auto rc = f_mkdir(pth.c_str());
+    if(rc != FR_OK) return MAKERESULT(455, 300 + rc);
     return 0;
 }
 

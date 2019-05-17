@@ -16,7 +16,22 @@
  
 #pragma once
 #include <switch.h>
+#include <cstdarg>
 #include "fatfs/ff.h"
+
+static void clog(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    FILE *f = fopen("sdmc:/print-fspusb.log", "a");
+    if(f) {
+        vfprintf(f, fmt, args);
+        fclose(f);
+    }
+    va_end(args);
+}
+
+#define printf clog
 
 enum class SCSIDirection
 {
