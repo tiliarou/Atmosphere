@@ -19,7 +19,8 @@
 #include <stratosphere.hpp>
 
 #include "fs/fs_ifilesystem.hpp"
-#include "fspusb_drive.hpp"
+#include "fspusb_drivefile.hpp"
+#include "fspusb_drivedirectory.hpp"
 
 class DriveFileSystem : public IFileSystem {
     private:
