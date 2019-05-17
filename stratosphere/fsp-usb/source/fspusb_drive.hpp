@@ -53,7 +53,7 @@ struct DriveData {
     std::shared_ptr<SCSIDevice> device;
     std::shared_ptr<SCSIBlock> scsi;
     bool status;
-    FATFS *fatfs;
+    FATFS fatfs;
     char mountname[0x10];
 };
 

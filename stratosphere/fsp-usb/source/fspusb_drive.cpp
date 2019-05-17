@@ -110,10 +110,9 @@ void USBDriveSystem::Update() {
                         memset(dt.mountname, 0, 0x10);
                         u32 idx = drives.size();
                         sprintf(dt.mountname, "usb-%d", idx);
-                        dt.fatfs = (FATFS*)malloc(sizeof(FATFS));
-                        memset(dt.fatfs, 0, sizeof(FATFS));
+                        memset(&dt.fatfs, 0, sizeof(FATFS));
                         drives.push_back(dt);
-                        auto fres = f_mount(dt.fatfs, dt.mountname, 1);
+                        auto fres = f_mount(&dt.fatfs, dt.mountname, 1);
                         if(fres != FR_OK) {
                             drives.pop_back();
                         }
