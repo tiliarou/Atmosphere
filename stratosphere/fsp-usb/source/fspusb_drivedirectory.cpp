@@ -18,7 +18,6 @@ Result DriveDirectory::ReadImpl(uint64_t *out_count, FsDirectoryEntry *out_entri
         return FspUsbResults::DriveUnavailable;
     }
     FsDirectoryEntry ent;
-    memset(&ent, 0, sizeof(FsDirectoryEntry));
     FRESULT res = FR_OK;
     FILINFO info;
     u32 count = 0;
@@ -30,6 +29,7 @@ Result DriveDirectory::ReadImpl(uint64_t *out_count, FsDirectoryEntry *out_entri
         if((res != FR_OK) || (info.fname[0] == 0)) {
             break;
         }
+        memset(&ent, 0, sizeof(FsDirectoryEntry));
         strcpy(ent.name, info.fname);
         if(info.fattrib & AM_DIR) {
             ent.type = ENTRYTYPE_DIR;
