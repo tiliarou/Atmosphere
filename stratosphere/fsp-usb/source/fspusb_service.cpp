@@ -21,20 +21,16 @@
 
 #include "fspusb_service.hpp"
 
-extern HosMutex usb_lock;
-
 Result FspUsbService::UpdateDrives(Out<u32> count) {
-    Result rc = USBDriveSystem::Update();
-    if(rc == 0) {
-        u32 drvcount = USBDriveSystem::GetDriveCount();
-        count.SetValue(drvcount);
-    }
-    return rc;
+    USBDriveSystem::Update();
+    u32 drvcount = USBDriveSystem::GetDriveCount();
+    count.SetValue(drvcount);
+    return 0;
 }
 
 Result FspUsbService::OpenDriveFileSystem(u32 index, Out<std::shared_ptr<IFileSystemInterface>> out) {
     if(index >= USBDriveSystem::GetDriveCount()) {
-        return MAKERESULT(455, 10);
+        return FspUsbResults::InvalidDriveIndex;
     }
     out.SetValue(std::make_shared<IFileSystemInterface>(std::make_shared<DriveFileSystem>(index)));
     return 0;

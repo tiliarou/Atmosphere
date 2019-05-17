@@ -28,23 +28,40 @@ enum class DriveFileSystemType {
     exFAT,
 };
 
-#define DRIVE_MAX_VALUE 10 // Way more that actual max count, in order to avoid issues
+static constexpr u32 DriveMax = 10; // FATFS drive limit
+
+#define DRIVES_SCOPE_GUARD std::scoped_lock<HosMutex> lck(drive_lock);
+
+class FspUsbResults {
+    public:
+        static constexpr u32 Module = 476;
+        
+        static constexpr Result InvalidDriveIndex = MAKERESULT(Module, 1);
+        static constexpr Result DriveUnavailable = MAKERESULT(Module, 2);
+        static constexpr Result MakeFATFSErrorResult(FRESULT Res) {
+            if(Res == FR_OK) {
+                return 0;
+            }
+            return MAKERESULT(Module, 100 + (u32)Res);
+        }
+};
 
 struct DriveData {
-    char mountname[0x10];
     UsbHsClientIfSession usbif;
     UsbHsClientEpSession usbinep;
     UsbHsClientEpSession usboutep;
     std::shared_ptr<SCSIDevice> device;
     std::shared_ptr<SCSIBlock> scsi;
+    bool status;
     FATFS *fatfs;
+    char mountname[0x10];
 };
 
 class USBDriveSystem {
     public:
         static Result Initialize();
         static bool IsInitialized();
-        static Result Update();
+        static void Update();
         static Result WaitForDrives(s64 timeout = -1);
         static void Finalize();
         static u32 GetDriveCount();

@@ -15,9 +15,11 @@ Result DriveFileSystem::DeleteFileImpl(const FsPath &path) { return 0; }
 
 Result DriveFileSystem::CreateDirectoryImpl(const FsPath &path) {
     std::string pth = GetFullPath(path);
-    auto rc = f_mkdir(pth.c_str());
-    if(rc != FR_OK) return MAKERESULT(455, 300 + rc);
-    return 0;
+    if(pth.empty()) {
+        return FspUsbResults::DriveUnavailable;
+    }
+    auto res = f_mkdir(pth.c_str());
+    return FspUsbResults::MakeFATFSErrorResult(res);
 }
 
 Result DriveFileSystem::DeleteDirectoryImpl(const FsPath &path) { return 0; }

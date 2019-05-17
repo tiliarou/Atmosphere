@@ -30,7 +30,7 @@ extern "C" {
 
     u32 __nx_applet_type = AppletType_None;
 
-    #define INNER_HEAP_SIZE 0x200000
+    #define INNER_HEAP_SIZE 0x100000
     size_t nx_inner_heap_size = INNER_HEAP_SIZE;
     char   nx_inner_heap[INNER_HEAP_SIZE];
 
@@ -88,7 +88,7 @@ void __appExit(void) {
     fsExit();
 }
 
-struct FspUsbManagerOptions {
+struct FspUsbManagerOptions { // fsp-srv's ones, but without domains (need this specific buf size as we're using fs-compatible fss)
     static const size_t PointerBufferSize = 0x800;
     static const size_t MaxDomains = 0;
     static const size_t MaxDomainObjects = 0;
@@ -102,7 +102,7 @@ int main(int argc, char **argv)
     static auto s_server_manager = FspUsbManager(2);
 
     /* Create service. */
-    s_server_manager.AddWaitable(new ServiceServer<FspUsbService>("fsp-usb", 0x20));
+    s_server_manager.AddWaitable(new ServiceServer<FspUsbService>("fsp-usb", 0x40));
 
     /* Loop forever, servicing our services. */
     s_server_manager.Process();
@@ -110,4 +110,3 @@ int main(int argc, char **argv)
     /* Cleanup */
     return 0;
 }
-

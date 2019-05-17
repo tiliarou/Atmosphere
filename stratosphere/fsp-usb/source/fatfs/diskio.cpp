@@ -15,6 +15,7 @@
 #include "diskio.h"
 #include "../fspusb_drive.hpp"
 
+extern HosMutex drive_lock;
 extern std::vector<DriveData> drives;
 
 /*-----------------------------------------------------------------------*/
@@ -54,8 +55,7 @@ extern "C" DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
-	printf("pdrv: %d, drive count: %d", pdrv, drives.size());
-	printf("capacity: %lld, block size: %d", drives[pdrv].scsi->capacity,drives[pdrv].scsi->block_size);
+	DRIVES_SCOPE_GUARD;
 	int wres = drives[pdrv].scsi->partitions[0].read_sectors(buff, sector, count);
 	if(wres != 0) {
 		return RES_OK;
@@ -79,6 +79,7 @@ extern "C" DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
+	DRIVES_SCOPE_GUARD;
 	int wres = drives[pdrv].scsi->partitions[0].write_sectors(buff, sector, count);
 	if(wres != 0) {
 		return RES_OK;

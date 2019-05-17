@@ -23,7 +23,7 @@ static void clog(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    FILE *f = fopen("sdmc:/print-fspusb.log", "a");
+    FILE *f = fopen("sdmc:/fspusb-log.log", "a");
     if(f) {
         vfprintf(f, fmt, args);
         fclose(f);

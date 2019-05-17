@@ -56,8 +56,9 @@ Result USBDriveSystem::WaitForDrives(s64 timeout) {
     return eventWait(&ifaceavailable, timeout);
 }
 
-Result USBDriveSystem::Update() {
-    UsbHsInterface iface_block[DRIVE_MAX_VALUE];
+void USBDriveSystem::Update() {
+    DRIVES_SCOPE_GUARD;
+    UsbHsInterface iface_block[DriveMax];
     memset(iface_block, 0, sizeof(iface_block));
     s32 iface_count = 0;
     Result rc = 0;
@@ -121,7 +122,6 @@ Result USBDriveSystem::Update() {
             }
         }
     }
-    return rc;
 }
 
 void USBDriveSystem::Finalize() {
@@ -132,5 +132,6 @@ void USBDriveSystem::Finalize() {
 }
 
 u32 USBDriveSystem::GetDriveCount() {
+    DRIVES_SCOPE_GUARD;
     return drives.size();
 }
