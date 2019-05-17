@@ -96,10 +96,21 @@ struct FspUsbManagerOptions { // fsp-srv's ones, but without domains (need this 
 
 using FspUsbManager = WaitableManager<FspUsbManagerOptions>;
 
+void USBUpdateLoop(void *arg) {
+    while(true) {
+        USBDriveSystem::Update();
+        svcSleepThread(100000000L);
+    }
+}
+
 int main(int argc, char **argv)
 {
     /* Static server manager. */
     static auto s_server_manager = FspUsbManager(2);
+
+    HosThread usbupdate;
+    usbupdate.Initialize(&USBUpdateLoop, nullptr, 0x4000, 0x2b);
+    usbupdate.Start();
 
     /* Create service. */
     s_server_manager.AddWaitable(new ServiceServer<FspUsbService>("fsp-usb", 0x40));

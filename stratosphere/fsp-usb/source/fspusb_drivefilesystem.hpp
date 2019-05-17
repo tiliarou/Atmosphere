@@ -24,15 +24,15 @@
 class DriveFileSystem : public IFileSystem {
     private:
         u32 drvidx;
+        s32 usbid;
         
     public:
         DriveFileSystem(u32 idx) : drvidx(idx) {
-        }
-
-        ~DriveFileSystem() {
+            usbid = GetDriveAccess()->usbif.ID;
         }
 
         DriveData *GetDriveAccess();
+        bool IsOk();
 
         std::string GetFullPath(const FsPath &path) {
             DriveData *data = GetDriveAccess();

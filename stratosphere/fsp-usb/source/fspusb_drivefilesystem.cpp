@@ -1,12 +1,24 @@
 #include "fspusb_drivefilesystem.hpp"
 
+extern HosMutex drive_lock;
 extern std::vector<DriveData> drives;
 
 DriveData *DriveFileSystem::GetDriveAccess() {
+    DRIVES_SCOPE_GUARD;
     if(drvidx >= drives.size()) {
         return NULL;
     }
     return &drives[drvidx];
+}
+
+bool DriveFileSystem::IsOk() {
+    DRIVES_SCOPE_GUARD;
+    for(u32 i = 0; i < drives.size(); i++) {
+        if(drives[i].usbif.ID == usbid) {
+            return true;
+        }
+    }
+    return false;
 }
 
 Result DriveFileSystem::CreateFileImpl(const FsPath &path, uint64_t size, int flags) { return 0; }
@@ -14,6 +26,9 @@ Result DriveFileSystem::CreateFileImpl(const FsPath &path, uint64_t size, int fl
 Result DriveFileSystem::DeleteFileImpl(const FsPath &path) { return 0; }
 
 Result DriveFileSystem::CreateDirectoryImpl(const FsPath &path) {
+    if(!IsOk()) {
+        return FspUsbResults::DriveUnavailable;
+    }
     std::string pth = GetFullPath(path);
     if(pth.empty()) {
         return FspUsbResults::DriveUnavailable;
