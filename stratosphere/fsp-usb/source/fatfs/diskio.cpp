@@ -15,7 +15,7 @@
 #include "diskio.h"
 #include "../fspusb_drive.hpp"
 
-extern HosMutex drive_lock;
+extern HosMutex g_usbdrive_drives_lock;
 extern std::vector<DriveData> drives;
 
 /*-----------------------------------------------------------------------*/

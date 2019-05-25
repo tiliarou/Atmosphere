@@ -35,3 +35,32 @@ Result FspUsbService::OpenDriveFileSystem(u32 index, Out<std::shared_ptr<IFileSy
     out.SetValue(std::make_shared<IFileSystemInterface>(std::make_shared<DriveFileSystem>(index)));
     return 0;
 }
+
+Result FspUsbService::GetDriveLabel(u32 index, OutBuffer<char> out) {
+    if(index >= USBDriveSystem::GetDriveCount()) {
+        return FspUsbResults::InvalidDriveIndex;
+    }
+    char drivemount[0x10] = {0};
+    sprintf(drivemount, "%d:", index);
+    auto res = f_getlabel(drivemount, out.buffer, NULL);
+    return FspUsbResults::MakeFATFSErrorResult(res);
+}
+
+Result FspUsbService::SetDriveLabel(u32 index, InBuffer<char> label) {
+    if(index >= USBDriveSystem::GetDriveCount()) {
+        return FspUsbResults::InvalidDriveIndex;
+    }
+    char drivestr[0x100] = {0};
+    sprintf(drivestr, "usb-%d:%s", index, label.buffer);
+    auto res = f_setlabel(drivestr);
+    return FspUsbResults::MakeFATFSErrorResult(res);
+}
+
+Result FspUsbService::GetDriveFileSystemType(u32 index, Out<u8> out) {
+    if(index >= USBDriveSystem::GetDriveCount()) {
+        return FspUsbResults::InvalidDriveIndex;
+    }
+    u8 type = USBDriveSystem::GetFSType(index);
+    out.SetValue(type);
+    return 0;
+}
