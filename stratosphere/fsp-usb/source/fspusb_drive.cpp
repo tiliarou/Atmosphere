@@ -23,37 +23,37 @@
 
 #include "fspusb_drive.hpp"
 
-static bool init = false;
-static UsbHsInterfaceFilter ifilter;
-static Event ifaceavailable;
-HosMutex drive_lock;
-std::vector<DriveData> drives;
+static bool g_usbdrive_init = false;
+static UsbHsInterfaceFilter g_usbdrive_device_filter;
+static Event g_usbdrive_interface_available_event;
+HosMutex g_usbdrive_drives_lock;
+std::vector<DriveData> g_usbdrive_drives;
 
 Result USBDriveSystem::Initialize() {
-    if(init) return 0;
+    if(g_usbdrive_init) return 0;
     Result rc = usbHsInitialize();
     if(rc == 0)
     {
-        memset(&ifilter, 0, sizeof(ifilter));
-        ifilter.Flags = UsbHsInterfaceFilterFlags_bInterfaceClass | UsbHsInterfaceFilterFlags_bInterfaceSubClass | UsbHsInterfaceFilterFlags_bInterfaceProtocol;
-        ifilter.bInterfaceClass = 8;
-        ifilter.bInterfaceSubClass = 6;
-        ifilter.bInterfaceProtocol = 80;
-        rc = usbHsCreateInterfaceAvailableEvent(&ifaceavailable, false, 0, &ifilter);
+        memset(&g_usbdrive_device_filter, 0, sizeof(g_usbdrive_device_filter));
+        g_usbdrive_device_filter.Flags = UsbHsInterfaceFilterFlags_bInterfaceClass | UsbHsInterfaceFilterFlags_bInterfaceSubClass | UsbHsInterfaceFilterFlags_bInterfaceProtocol;
+        g_usbdrive_device_filter.bInterfaceClass = 8;
+        g_usbdrive_device_filter.bInterfaceSubClass = 6;
+        g_usbdrive_device_filter.bInterfaceProtocol = 80;
+        rc = usbHsCreateInterfaceAvailableEvent(&g_usbdrive_interface_available_event, false, 0, &g_usbdrive_device_filter);
         if(rc == 0) {
-            init = true;
+            g_usbdrive_init = true;
         }
     }
     return rc;
 }
 
 bool USBDriveSystem::IsInitialized() {
-    return init;
+    return g_usbdrive_init;
 }
 
 Result USBDriveSystem::WaitForDrives(s64 timeout) {
-    if(!init) return LibnxError_NotInitialized;
-    return eventWait(&ifaceavailable, timeout);
+    if(!g_usbdrive_init) return LibnxError_NotInitialized;
+    return eventWait(&g_usbdrive_interface_available_event, timeout);
 }
 
 void USBDriveSystem::Update() {
@@ -62,28 +62,29 @@ void USBDriveSystem::Update() {
     memset(iface_block, 0, sizeof(iface_block));
     s32 iface_count = 0;
     Result rc = 0;
-    if(!drives.empty()) {
+    if(!g_usbdrive_drives.empty()) {
         rc = usbHsQueryAcquiredInterfaces(iface_block, sizeof(iface_block), &iface_count);
-        for(u32 i = 0; i < drives.size(); i++) {
+        for(u32 i = 0; i < g_usbdrive_drives.size(); i++) {
             bool ok = false;
             for(s32 j = 0; j < iface_count; j++) {
-                if(iface_block[j].inf.ID == drives[i].scsi->device->client->ID) {
+                if(iface_block[j].inf.ID == g_usbdrive_drives[i].usbif.ID) {
                     ok = true;
                     break;
                 }
             }
             if(!ok) {
-                f_mount(NULL, drives[i].mountname, 1);
-                usbHsEpClose(&drives[i].usbinep);
-                usbHsEpClose(&drives[i].usboutep);
-                usbHsIfResetDevice(&drives[i].usbif);
-                usbHsIfClose(&drives[i].usbif);
-                drives.erase(drives.begin() + i);
+                printf("Deleting drive: %d, ID: %d\n", i, g_usbdrive_drives[i].usbif.ID);
+                f_mount(NULL, g_usbdrive_drives[i].mountname, 1);
+                usbHsEpClose(&g_usbdrive_drives[i].usbinep);
+                usbHsEpClose(&g_usbdrive_drives[i].usboutep);
+                usbHsIfResetDevice(&g_usbdrive_drives[i].usbif);
+                usbHsIfClose(&g_usbdrive_drives[i].usbif);
+                g_usbdrive_drives.erase(g_usbdrive_drives.begin() + i);
             }
         }
     }
     memset(iface_block, 0, sizeof(iface_block));
-    rc = usbHsQueryAvailableInterfaces(&ifilter, iface_block, sizeof(iface_block), &iface_count);
+    rc = usbHsQueryAvailableInterfaces(&g_usbdrive_device_filter, iface_block, sizeof(iface_block), &iface_count);
     if(rc == 0) {
         for(s32 i = 0; i < iface_count; i++) {
             DriveData dt;
@@ -105,16 +106,21 @@ void USBDriveSystem::Update() {
                         }
                     }
                     if(rc == 0) {
+                        printf("Adding new drive: %d, ID: %d\n", g_usbdrive_drives.size(), dt.usbif.ID);
                         dt.device = std::make_shared<SCSIDevice>(&dt.usbif, &dt.usbinep, &dt.usboutep);
                         dt.scsi = std::make_shared<SCSIBlock>(dt.device);
                         memset(dt.mountname, 0, 0x10);
-                        u32 idx = drives.size();
-                        sprintf(dt.mountname, "usb-%d", idx);
+                        u32 idx = g_usbdrive_drives.size();
+                        sprintf(dt.mountname, "usb-%d:", idx);
                         memset(&dt.fatfs, 0, sizeof(FATFS));
-                        drives.push_back(dt);
+                        g_usbdrive_drives.push_back(dt);
                         auto fres = f_mount(&dt.fatfs, dt.mountname, 1);
                         if(fres != FR_OK) {
-                            drives.pop_back();
+                            printf("Failed to add new drive: %d (pdrv: %d) (%d)\n", g_usbdrive_drives.size(), dt.fatfs.pdrv, fres);
+                            g_usbdrive_drives.pop_back();
+                        }
+                        else {
+                            printf("Correctly added new drive: %d (pdrv: %d)\n", g_usbdrive_drives.size(), dt.fatfs.pdrv);
                         }
                     }
                 }
@@ -124,13 +130,21 @@ void USBDriveSystem::Update() {
 }
 
 void USBDriveSystem::Finalize() {
-    if(!init) return;
-    usbHsDestroyInterfaceAvailableEvent(&ifaceavailable, 0);
+    if(!g_usbdrive_init) return;
+    usbHsDestroyInterfaceAvailableEvent(&g_usbdrive_interface_available_event, 0);
     usbHsExit();
-    init = false;
+    g_usbdrive_init = false;
 }
 
 u32 USBDriveSystem::GetDriveCount() {
     DRIVES_SCOPE_GUARD;
-    return drives.size();
+    return g_usbdrive_drives.size();
+}
+
+u8 USBDriveSystem::GetFSType(u32 index) {
+    DRIVES_SCOPE_GUARD;
+    if(index >= g_usbdrive_drives.size()) {
+        return 0;
+    }
+    return g_usbdrive_drives[index].fatfs.fs_type;
 }

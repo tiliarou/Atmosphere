@@ -1,12 +1,12 @@
 #include "fspusb_drivedirectory.hpp"
 
-extern HosMutex drive_lock;
-extern std::vector<DriveData> drives;
+extern HosMutex g_usbdrive_drives_lock;
+extern std::vector<DriveData> g_usbdrive_drives;
 
 bool DriveDirectory::IsOk() {
     DRIVES_SCOPE_GUARD;
-    for(u32 i = 0; i < drives.size(); i++) {
-        if(drives[i].usbif.ID == usbid) {
+    for(u32 i = 0; i < g_usbdrive_drives.size(); i++) {
+        if(g_usbdrive_drives[i].usbif.ID == usbid) {
             return true;
         }
     }

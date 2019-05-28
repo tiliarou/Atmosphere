@@ -30,7 +30,7 @@ enum class DriveFileSystemType {
 
 static constexpr u32 DriveMax = 10; // FATFS drive limit
 
-#define DRIVES_SCOPE_GUARD std::scoped_lock<HosMutex> lck(drive_lock);
+#define DRIVES_SCOPE_GUARD std::scoped_lock<HosMutex> lck(g_usbdrive_drives_lock);
 
 class FspUsbResults {
     public:
@@ -65,4 +65,5 @@ class USBDriveSystem {
         static Result WaitForDrives(s64 timeout = -1);
         static void Finalize();
         static u32 GetDriveCount();
+        static u8 GetFSType(u32 index);
 };

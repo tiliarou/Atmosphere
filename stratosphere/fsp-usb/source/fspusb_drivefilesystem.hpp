@@ -40,7 +40,7 @@ class DriveFileSystem : public IFileSystem {
             if(data == NULL) {
                 return "";
             }
-            std::string str = std::string(data->mountname) + ":" + std::string(path.str);
+            std::string str = std::string(data->mountname) + std::string(path.str);
             printf("GetFullPath (path = \"%s\")\n", str.c_str());
             return str;
         }
