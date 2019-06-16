@@ -65,6 +65,9 @@ static FsFile g_cal0_file = {0};
 static u8 g_cal0_storage_backup[ProdinfoSize];
 static u8 g_cal0_backup[ProdinfoSize];
 
+/* Emummc-related file. */
+static FsFile g_emummc_file = {0};
+
 static bool IsHexadecimal(const char *str) {
     while (*str) {
         if (isxdigit(*str)) {
@@ -99,7 +102,7 @@ void Utils::InitializeThreadFunc(void *args) {
     fsFsCreateDirectory(&g_sd_filesystem, "/atmosphere/automatic_backups");
     {
         FsStorage cal0_storage;
-        if (R_FAILED(fsOpenBisStorage(&cal0_storage, BisStorageId_Prodinfo)) || R_FAILED(fsStorageRead(&cal0_storage, 0, g_cal0_storage_backup, ProdinfoSize))) {
+        if (R_FAILED(fsOpenBisStorage(&cal0_storage, FsBisStorageId_CalibrationBinary)) || R_FAILED(fsStorageRead(&cal0_storage, 0, g_cal0_storage_backup, ProdinfoSize))) {
             std::abort();
         }
         fsStorageClose(&cal0_storage);
@@ -119,7 +122,7 @@ void Utils::InitializeThreadFunc(void *args) {
         if (R_SUCCEEDED(fsFsOpenFile(&g_sd_filesystem, prodinfo_backup_path, FS_OPEN_READ | FS_OPEN_WRITE, &g_cal0_file))) {
             bool has_auto_backup = false;
             size_t read = 0;
-            if (R_SUCCEEDED(fsFileRead(&g_cal0_file, 0, g_cal0_backup, sizeof(g_cal0_backup), &read)) && read == sizeof(g_cal0_backup)) {
+            if (R_SUCCEEDED(fsFileRead(&g_cal0_file, 0, g_cal0_backup, sizeof(g_cal0_backup), FS_READOPTION_NONE, &read)) && read == sizeof(g_cal0_backup)) {
                 bool is_cal0_valid = true;
                 is_cal0_valid &= memcmp(g_cal0_backup, "CAL0", 4) == 0;
                 is_cal0_valid &= memcmp(g_cal0_backup + 0x250, serial_number, 0x18) == 0;
@@ -135,8 +138,7 @@ void Utils::InitializeThreadFunc(void *args) {
 
             if (!has_auto_backup) {
                 fsFileSetSize(&g_cal0_file, ProdinfoSize);
-                fsFileWrite(&g_cal0_file, 0, g_cal0_storage_backup, ProdinfoSize);
-                fsFileFlush(&g_cal0_file);
+                fsFileWrite(&g_cal0_file, 0, g_cal0_storage_backup, ProdinfoSize, FS_WRITEOPTION_FLUSH);
             }
 
             /* NOTE: g_cal0_file is intentionally not closed here. This prevents any other process from opening it. */
@@ -197,6 +199,17 @@ void Utils::InitializeThreadFunc(void *args) {
     }
 
     Utils::RefreshConfiguration();
+    
+    /* If we're emummc, persist a write handle to prevent other processes from touching the image. */
+    if (IsEmummc()) {
+        const char *emummc_file_path = GetEmummcFilePath();
+        if (emummc_file_path != nullptr) {
+            char emummc_path[0x100] = {0};
+            std::strncpy(emummc_path, emummc_file_path, 0x80);
+            std::strcat(emummc_path, "/eMMC");
+            fsFsOpenFile(&g_sd_filesystem, emummc_file_path, FS_OPEN_READ | FS_OPEN_WRITE, &g_emummc_file);
+        }
+    }
 
     /* Initialize set:sys. */
     DoWithSmSession([&]() {
@@ -378,7 +391,7 @@ Result Utils::SaveSdFileForAtmosphere(u64 title_id, const char *fn, void *data, 
     }
 
     /* Try to write the data. */
-    rc = fsFileWrite(&f, 0, data, size);
+    rc = fsFileWrite(&f, 0, data, size, FS_WRITEOPTION_FLUSH);
 
     return rc;
 }
@@ -614,7 +627,7 @@ OverrideKey Utils::GetTitleOverrideKey(u64 tid) {
             ON_SCOPE_EXIT { free(config_buf); };
 
             /* Read title ini contents. */
-            fsFileRead(&cfg_file, 0, config_buf, config_file_size, &config_file_size);
+            fsFileRead(&cfg_file, 0, config_buf, config_file_size, FS_READOPTION_NONE, &config_file_size);
 
             /* Parse title ini. */
             ini_parse_string(config_buf, FsMitmTitleSpecificIniHandler, &cfg);
@@ -672,7 +685,7 @@ OverrideLocale Utils::GetTitleOverrideLocale(u64 tid) {
             ON_SCOPE_EXIT { free(config_buf); };
 
             /* Read title ini contents. */
-            fsFileRead(&cfg_file, 0, config_buf, config_file_size, &config_file_size);
+            fsFileRead(&cfg_file, 0, config_buf, config_file_size, FS_READOPTION_NONE, &config_file_size);
 
             /* Parse title ini. */
             ini_parse_string(config_buf, FsMitmTitleSpecificLocaleIniHandler, &locale);
@@ -698,7 +711,7 @@ void Utils::RefreshConfiguration() {
     /* Read in string. */
     std::fill(g_config_ini_data, g_config_ini_data + 0x800, 0);
     size_t r_s;
-    fsFileRead(&config_file, 0, g_config_ini_data, size, &r_s);
+    fsFileRead(&config_file, 0, g_config_ini_data, size, FS_READOPTION_NONE, &r_s);
     fsFileClose(&config_file);
 
     ini_parse_string(g_config_ini_data, FsMitmIniHandler, NULL);
