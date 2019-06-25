@@ -66,26 +66,13 @@ void __libnx_initheap(void) {
 }
 
 void __appInit(void) {
-    Result rc;
-
     SetFirmwareVersionForLibnx();
 
     /* Initialize services we need (TODO: SPL) */
     DoWithSmSession([&]() {
-        rc = fsInitialize();
-        if (R_FAILED(rc)) {
-            std::abort();
-        }
-
-        rc = lrInitialize();
-        if (R_FAILED(rc))  {
-            std::abort();
-        }
-
-        rc = fsldrInitialize();
-        if (R_FAILED(rc))  {
-            std::abort();
-        }
+        R_ASSERT(fsInitialize());
+        R_ASSERT(lrInitialize());
+        R_ASSERT(fsldrInitialize());
     });
 
 
@@ -116,10 +103,10 @@ int main(int argc, char **argv)
     s_server_manager.AddWaitable(new ServiceServer<ProcessManagerService>("ldr:pm", 1));
     s_server_manager.AddWaitable(new ServiceServer<ShellService>("ldr:shel", 3));
     s_server_manager.AddWaitable(new ServiceServer<DebugMonitorService>("ldr:dmnt", 2));
-        
+
     /* Loop forever, servicing our services. */
     s_server_manager.Process();
-    
+
 	return 0;
 }
 

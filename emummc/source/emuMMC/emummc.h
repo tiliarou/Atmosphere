@@ -50,8 +50,6 @@ sdmmc_accessor_t *sdmmc_accessor_get(int mmc_id);
 void mutex_lock_handler(int mmc_id);
 void mutex_unlock_handler(int mmc_id);
 
-intptr_t sdmmc_calculate_dma_addr(sdmmc_accessor_t *_this, void *buf, unsigned int num_sectors);
-
 uint64_t sdmmc_wrapper_read(void *buf, uint64_t bufSize, int mmc_id, unsigned int sector, unsigned int num_sectors);
 uint64_t sdmmc_wrapper_write(int mmc_id, unsigned int sector, unsigned int num_sectors, void *buf, uint64_t bufSize);
 
@@ -61,9 +59,9 @@ typedef struct _file_based_ctxt
 	uint64_t parts;
 	uint64_t part_size;
 	FATFS *sd_fs;
-	FIL *fp_boot0;
-	FIL *fp_boot1;
-	FIL *fp_gpp[32];
+	FIL fp_boot0;
+	FIL fp_boot1;
+	FIL fp_gpp[32];
 } file_based_ctxt;
 
 #ifdef __cplusplus

@@ -17,8 +17,13 @@
 #include <switch.h>
 #include <stratosphere.hpp>
 
+#include "spl_api_impl.hpp"
 #include "spl_random_service.hpp"
 
-Result RandomService::GenerateRandomBytes(OutBuffer<u8> out) {
-    return this->secmon_wrapper->GenerateRandomBytes(out.buffer, out.num_elements);
+namespace sts::spl {
+
+    Result RandomService::GenerateRandomBytes(OutBuffer<u8> out) {
+        return impl::GenerateRandomBytes(out.buffer, out.num_elements);
+    }
+
 }

@@ -22,6 +22,7 @@
 #include <switch.h>
 #include <atmosphere.h>
 #include <stratosphere.hpp>
+#include <stratosphere/sm/sm_manager_api.hpp>
 
 #include "pm_boot_mode.hpp"
 #include "pm_info.hpp"
@@ -95,51 +96,22 @@ void RegisterPrivilegedProcessesWithFs() {
 }
 
 void __appInit(void) {
-    Result rc;
-
     SetFirmwareVersionForLibnx();
 
     DoWithSmSession([&]() {
-        rc = fsprInitialize();
-        if (R_FAILED(rc))  {
-            std::abort();
-        }
+        R_ASSERT(fsprInitialize());
+        R_ASSERT(smManagerInitialize());
 
         /* This works around a bug with process permissions on < 4.0.0. */
         RegisterPrivilegedProcessesWithFs();
 
-        rc = smManagerAmsInitialize();
-        if (R_SUCCEEDED(rc)) {
-            smManagerAmsEndInitialDefers();
-            smManagerAmsExit();
-        } else {
-            std::abort();
-        }
+        /* Use AMS manager extension to tell SM that FS has been worked around. */
+        R_ASSERT(sts::sm::manager::EndInitialDefers());
 
-        rc = smManagerInitialize();
-        if (R_FAILED(rc))  {
-            std::abort();
-        }
-
-        rc = lrInitialize();
-        if (R_FAILED(rc))  {
-            std::abort();
-        }
-
-        rc = ldrPmInitialize();
-        if (R_FAILED(rc))  {
-            std::abort();
-        }
-
-        rc = splInitialize();
-        if (R_FAILED(rc))  {
-            std::abort();
-        }
-
-        rc = fsInitialize();
-        if (R_FAILED(rc)) {
-            std::abort();
-        }
+        R_ASSERT(lrInitialize());
+        R_ASSERT(ldrPmInitialize());
+        R_ASSERT(splInitialize());
+        R_ASSERT(fsInitialize());
     });
 
     CheckAtmosphereVersion(CURRENT_ATMOSPHERE_VERSION);
@@ -163,12 +135,8 @@ int main(int argc, char **argv)
 
     /* Initialize and spawn the Process Tracking thread. */
     Registration::InitializeSystemResources();
-    if (R_FAILED(process_track_thread.Initialize(&ProcessTracking::MainLoop, NULL, 0x4000, 0x15))) {
-        std::abort();
-    }
-    if (R_FAILED(process_track_thread.Start())) {
-        std::abort();
-    }
+    R_ASSERT(process_track_thread.Initialize(&ProcessTracking::MainLoop, NULL, 0x4000, 0x15));
+    R_ASSERT(process_track_thread.Start());
 
     /* Create Server Manager. */
     static auto s_server_manager = WaitableManager(1);
@@ -178,7 +146,7 @@ int main(int argc, char **argv)
     s_server_manager.AddWaitable(new ServiceServer<DebugMonitorService>("pm:dmnt", 3));
     s_server_manager.AddWaitable(new ServiceServer<BootModeService>("pm:bm", 6));
     s_server_manager.AddWaitable(new ServiceServer<InformationService>("pm:info", 3));
-    
+
     /* Loop forever, servicing our services. */
     s_server_manager.Process();
 

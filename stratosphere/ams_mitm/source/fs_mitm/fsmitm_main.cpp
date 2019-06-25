@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
@@ -35,16 +35,14 @@ struct FsMitmManagerOptions {
 };
 using FsMitmManager = WaitableManager<FsMitmManagerOptions>;
 
-void FsMitmMain(void *arg) {    
+void FsMitmMain(void *arg) {
     /* Create server manager. */
-    auto server_manager = new FsMitmManager(5);
+    static auto s_server_manager = FsMitmManager(5);
 
     /* Create fsp-srv mitm. */
-    AddMitmServerToManager<FsMitmService>(server_manager, "fsp-srv", 61);
-                
+    AddMitmServerToManager<FsMitmService>(&s_server_manager, "fsp-srv", 61);
+
     /* Loop forever, servicing our services. */
-    server_manager->Process();
-    
-    delete server_manager;
+    s_server_manager.Process();
 }
 

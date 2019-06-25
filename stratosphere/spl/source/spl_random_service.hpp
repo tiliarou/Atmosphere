@@ -17,24 +17,25 @@
 #pragma once
 #include <switch.h>
 #include <stratosphere.hpp>
+#include <stratosphere/spl/spl_types.hpp>
 
-#include "spl_types.hpp"
-#include "spl_secmon_wrapper.hpp"
+namespace sts::spl {
 
-class RandomService final : public IServiceObject {
-    private:
-        SecureMonitorWrapper *secmon_wrapper;
-    public:
-        RandomService(SecureMonitorWrapper *sw) : secmon_wrapper(sw) {
-            /* ... */
-        }
+    class RandomService final : public IServiceObject {
+        protected:
+            enum class CommandId {
+                GenerateRandomBytes = 0,
+            };
+        public:
+            RandomService() { /* ... */ }
+            virtual ~RandomService() { /* ... */ }
+        private:
+            /* Actual commands. */
+            virtual Result GenerateRandomBytes(OutBuffer<u8> out);
+        public:
+            DEFINE_SERVICE_DISPATCH_TABLE {
+                MakeServiceCommandMeta<CommandId::GenerateRandomBytes, &RandomService::GenerateRandomBytes>(),
+            };
+    };
 
-        virtual ~RandomService() { /* ... */ }
-    private:
-        /* Actual commands. */
-        virtual Result GenerateRandomBytes(OutBuffer<u8> out);
-    public:
-        DEFINE_SERVICE_DISPATCH_TABLE {
-            MakeServiceCommandMeta<Csrng_Cmd_GenerateRandomBytes, &RandomService::GenerateRandomBytes>(),
-        };
-};
+}
