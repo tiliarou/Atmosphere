@@ -16,8 +16,14 @@
 
 #pragma once
 #include <switch.h>
+#include <stratosphere.hpp>
+#include <stratosphere/ldr.hpp>
 
-class HidManagement {
-    public:
-        static Result GetKeysHeld(u64 *keys);
-};
+namespace sts::ldr::caps {
+
+    /* Capabilities API. */
+    Result ValidateCapabilities(const void *acid_kac, size_t acid_kac_size, const void *aci_kac, size_t aci_kac_size);
+    u16    GetProgramInfoFlags(const void *kac, size_t kac_size);
+    void   SetProgramInfoFlags(u16 flags, void *kac, size_t kac_size);
+
+}

@@ -17,15 +17,13 @@
 #pragma once
 #include <switch.h>
 #include <stratosphere.hpp>
+#include <stratosphere/ldr.hpp>
 
-#include "../utils.hpp"
+namespace sts::ldr::ecs {
 
-enum NsGetterCmd : u32 {
-    NsGetterCmd_GetDocumentInterface = 7999,
-};
+    /* External Content Source API. */
+    const char *Get(ncm::TitleId title_id);
+    Result Set(Handle *out, ncm::TitleId title_id);
+    Result Clear(ncm::TitleId title_id);
 
-enum NsSrvCmd : u32 {
-    NsSrvCmd_GetApplicationContentPath = 21,
-    NsSrvCmd_ResolveApplicationContentPath = 23,
-    NsSrvCmd_GetRunningApplicationProgramId = 92,
-};
+}
