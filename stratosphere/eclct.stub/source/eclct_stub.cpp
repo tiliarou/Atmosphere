@@ -13,14 +13,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <malloc.h>
-
-#include <switch.h>
-#include <atmosphere.h>
 #include <stratosphere.hpp>
 
 extern "C" {
@@ -28,7 +20,7 @@ extern "C" {
 
     u32 __nx_applet_type = AppletType_None;
 
-    #define INNER_HEAP_SIZE 0x8000
+    #define INNER_HEAP_SIZE 0x2000
     size_t nx_inner_heap_size = INNER_HEAP_SIZE;
     char   nx_inner_heap[INNER_HEAP_SIZE];
 
@@ -37,17 +29,28 @@ extern "C" {
     void __appExit(void);
 
     /* Exception handling. */
-    alignas(16) u8 __nx_exception_stack[0x1000];
+    alignas(16) u8 __nx_exception_stack[ams::os::MemoryPageSize];
     u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
     void __libnx_exception_handler(ThreadExceptionDump *ctx);
-    u64 __stratosphere_title_id = TitleId_Eclct;
-    void __libstratosphere_exception_handler(AtmosphereFatalErrorContext *ctx);
 }
+
+namespace ams {
+
+    ncm::ProgramId CurrentProgramId = ncm::ProgramId::Eclct;
+
+    namespace result {
+
+        bool CallFatalOnResultAssertion = false;
+
+    }
+
+}
+
+using namespace ams;
 
 void __libnx_exception_handler(ThreadExceptionDump *ctx) {
-    StratosphereCrashHandler(ctx);
+    ams::CrashHandler(ctx);
 }
-
 
 void __libnx_initheap(void) {
 	void*  addr = nx_inner_heap;

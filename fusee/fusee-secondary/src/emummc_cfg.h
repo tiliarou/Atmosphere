@@ -18,7 +18,7 @@
 #define EXOSPHERE_EMUMMC_CONFIG_H
 
 #include <stdint.h>
-#include <atmosphere.h>
+#include <vapours/ams_version.h>
 
 /* "EFS0" */
 #define MAGIC_EMUMMC_CONFIG (0x30534645)
@@ -75,6 +75,12 @@ typedef enum {
 
     FS_VER_8_1_0,
     FS_VER_8_1_0_EXFAT,
+
+    FS_VER_9_0_0,
+    FS_VER_9_0_0_EXFAT,
+
+    FS_VER_9_1_0,
+    FS_VER_9_1_0_EXFAT,
 
     FS_VER_MAX,
 } emummc_fs_ver_t;

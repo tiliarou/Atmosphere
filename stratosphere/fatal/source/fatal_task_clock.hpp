@@ -13,20 +13,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include <switch.h>
-#include <stratosphere.hpp>
 #include "fatal_task.hpp"
 
-class AdjustClockTask : public IFatalTask {
-    private:
-        Result AdjustClockForModule(PcvModule module, u32 hz);
-        Result AdjustClock();
-    public:
-        AdjustClockTask(FatalThrowContext *ctx, u64 title_id) : IFatalTask(ctx, title_id) { }
-        virtual Result Run() override;
-        virtual const char *GetName() const override {
-            return "AdjustClockTask";
-        }
-};
+namespace ams::fatal::srv {
+
+    ITask *GetAdjustClockTask(const ThrowContext *ctx);
+
+}

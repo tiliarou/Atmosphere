@@ -48,6 +48,7 @@
 #include "exocfg.h"
 #include "display/video_fb.h"
 #include "lib/ini.h"
+#include "lib/log.h"
 #include "splash_screen.h"
 
 #define u8 uint8_t
@@ -57,7 +58,6 @@
 #include "sept_secondary_01_enc.h"
 #include "lp0fw_bin.h"
 #include "emummc_kip.h"
-#include "lib/log.h"
 #undef u8
 #undef u32
 
@@ -158,6 +158,13 @@ static int exosphere_ini_handler(void *user, const char *section, const char *na
             } else {
                 exo_cfg->flags &= ~(EXOSPHERE_FLAG_DISABLE_USERMODE_EXCEPTION_HANDLERS);
             }
+        } else if (strcmp(name, EXOSPHERE_ENABLE_USERMODE_PMU_ACCESS_KEY) == 0) {
+            sscanf(value, "%d", &tmp);
+            if (tmp) {
+                exo_cfg->flags |= EXOSPHERE_FLAG_ENABLE_USERMODE_PMU_ACCESS;
+            } else {
+                exo_cfg->flags &= ~(EXOSPHERE_FLAG_ENABLE_USERMODE_PMU_ACCESS);
+            }
         } else {
             return 0;
         }
@@ -208,11 +215,15 @@ static uint32_t nxboot_get_target_firmware(const void *package1loader) {
         }
         case 0x0F:          /* 7.0.0 - 7.0.1 */
             return ATMOSPHERE_TARGET_FIRMWARE_700;
-        case 0x10: {        /* 8.0.0 - 8.1.0 */
+        case 0x10: {        /* 8.0.0 - 9.0.0 */
             if (memcmp(package1loader_header->build_timestamp, "20190314", 8) == 0) {
                 return ATMOSPHERE_TARGET_FIRMWARE_800;
             } else if (memcmp(package1loader_header->build_timestamp, "20190531", 8) == 0) {
                 return ATMOSPHERE_TARGET_FIRMWARE_810;
+            } else if (memcmp(package1loader_header->build_timestamp, "20190809", 8) == 0) {
+                return ATMOSPHERE_TARGET_FIRMWARE_900;
+            } else if (memcmp(package1loader_header->build_timestamp, "20191021", 8) == 0) {
+                return ATMOSPHERE_TARGET_FIRMWARE_910;
             } else {
                 fatal_error("[NXBOOT] Unable to identify package1!\n");
             }
@@ -358,6 +369,10 @@ static void nxboot_configure_stratosphere(uint32_t target_firmware) {
     } else {
         /* Check if fuses are < 4.0.0, but firmware is >= 4.0.0 */
         if (target_firmware >= ATMOSPHERE_TARGET_FIRMWARE_400 && !(fuse_get_reserved_odm(7) & ~0x0000000F)) {
+            kip_patches_set_enable_nogc();
+        }
+        /* Check if the fuses are < 9.0.0, but firmware is >= 9.0.0 */
+        if (target_firmware >= ATMOSPHERE_TARGET_FIRMWARE_900 && !(fuse_get_reserved_odm(7) & ~0x000003FF)) {
             kip_patches_set_enable_nogc();
         }
     }
@@ -650,7 +665,6 @@ uint32_t nxboot_main(void) {
         }
     }
 
-    //fatal_error("Ran sept!");
     /* Display splash screen. */
     display_splash_screen_bmp(loader_ctx->custom_splash_path, (void *)0xC0000000);
 
@@ -715,7 +729,6 @@ uint32_t nxboot_main(void) {
             memcpy(ams_header->rsa_modulus, pkc_modulus, sizeof(ams_header->rsa_modulus));
         }
     }
-
 
     /* Select the right address for the warmboot firmware. */
     if (MAILBOX_EXOSPHERE_CONFIGURATION->target_firmware < ATMOSPHERE_TARGET_FIRMWARE_400) {
@@ -801,8 +814,8 @@ uint32_t nxboot_main(void) {
 
     print(SCREEN_LOG_LEVEL_INFO, "[NXBOOT] Powering on the CCPLEX...\n");
 
-    /* Unmount everything. */
-    nxfs_end();
+    /* Wait for the splash screen to have been displayed for as long as it should be. */
+    splash_screen_wait_delay();
 
     /* Return the memory address for booting CPU0. */
     return (uint32_t)exosphere_memaddr;

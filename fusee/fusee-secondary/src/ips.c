@@ -176,7 +176,7 @@ static inline uint8_t hex_nybble_to_u8(const char nybble) {
 static bool name_matches_hash(const char *name, size_t name_len, const void *hash, size_t hash_size) {
     /* Validate name is hex build id. */
     for (unsigned int i = 0; i < name_len - 4; i++) {
-        if (isxdigit(name[i]) == 0) {
+        if (isxdigit((unsigned char)name[i]) == 0) {
                 return false;
         }
     }
@@ -411,6 +411,12 @@ static const uint8_t g_fs_hashes[FS_VER_MAX][0x8] = {
 
     "\x6B\x09\xB6\x7B\x29\xC0\x20\x24", /* FS_VER_8_1_0 */
     "\xB4\xCA\xE1\xF2\x49\x65\xD9\x2E", /* FS_VER_8_1_0_EXFAT */
+
+    "\x46\x87\x40\x76\x1E\x19\x3E\xB7", /* FS_VER_9_0_0 */
+    "\x7C\x95\x13\x76\xE5\xC1\x2D\xF8", /* FS_VER_9_0_0_EXFAT */
+
+    "\xB5\xE7\xA6\x4C\x6F\x5C\x4F\xE3", /* FS_VER_9_1_0 */
+    "\xF1\x96\xD1\x44\xD0\x44\x45\xB6", /* FS_VER_9_1_0_EXFAT */
 };
 
 kip1_header_t *apply_kip_ips_patches(kip1_header_t *kip, size_t kip_size, emummc_fs_ver_t *out_fs_ver) {

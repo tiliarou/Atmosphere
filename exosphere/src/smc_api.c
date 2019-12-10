@@ -186,6 +186,8 @@ void set_version_specific_smcs(void) {
         case ATMOSPHERE_TARGET_FIRMWARE_700:
         case ATMOSPHERE_TARGET_FIRMWARE_800:
         case ATMOSPHERE_TARGET_FIRMWARE_810:
+        case ATMOSPHERE_TARGET_FIRMWARE_900:
+        case ATMOSPHERE_TARGET_FIRMWARE_910:
             /* No more LoadSecureExpModKey. */
             g_smc_user_table[0xE].handler = NULL;
             g_smc_user_table[0xC].id = 0xC300D60C;
@@ -316,7 +318,7 @@ void call_smc_handler(uint32_t handler_id, smc_args_t *args) {
 #endif
 
 #if DEBUG_PANIC_ON_FAILURE
-    if (args->X[0] && (!is_aes_kek || args->X[3] <= ATMOSPHERE_TARGET_FIRMWARE_DEFAULT_FOR_DEBUG))
+    if (args->X[0] && (!is_aes_kek || args->X[3] <= ATMOSPHERE_TARGET_FIRMWARE_CURRENT))
     {
         MAKE_REG32(get_iram_address_for_debug() + 0x4FF0) = handler_id;
         MAKE_REG32(get_iram_address_for_debug() + 0x4FF4) = smc_id;

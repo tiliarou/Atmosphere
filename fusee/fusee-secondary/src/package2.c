@@ -16,7 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <atmosphere.h>
+#include <vapours/ams_version.h>
 #include "utils.h"
 #include "masterkey.h"
 #include "stratosphere.h"
@@ -232,7 +232,7 @@ static bool package2_validate_metadata(package2_meta_t *metadata, uint8_t data[]
 
     /* Perform version checks. */
     /* We will be compatible with all package2s released before current, but not newer ones. */
-    if (metadata->version_max >= PACKAGE2_MINVER_THEORETICAL && metadata->version_min < PACKAGE2_MAXVER_810_CURRENT) {
+    if (metadata->version_max >= PACKAGE2_MINVER_THEORETICAL && metadata->version_min < PACKAGE2_MAXVER_910_CURRENT) {
         return true;
     }
 

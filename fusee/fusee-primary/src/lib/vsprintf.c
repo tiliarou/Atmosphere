@@ -508,7 +508,7 @@ char *uuid_string(char *buf, char *end, const uint8_t *addr,
 	if (uc) {
 		p = uuid;
 		do {
-			*p = toupper(*p);
+			*p = toupper((unsigned char)*p);
 		} while (*(++p));
 	}
 
@@ -1177,7 +1177,7 @@ do {									\
 		case FORMAT_TYPE_PTR:
 			save_arg(void *);
 			/* skip all alphanumeric pointer suffixes */
-			while (isalnum(*fmt))
+			while (isalnum((unsigned char)*fmt))
 				fmt++;
 			break;
 
@@ -1340,7 +1340,7 @@ int bstr_printf(char *buf, size_t size, const char *fmt, const uint32_t *bin_buf
 
 		case FORMAT_TYPE_PTR:
 			str = pointer(fmt+1, str, end, get_arg(void *), spec);
-			while (isalnum(*fmt))
+			while (isalnum((unsigned char)*fmt))
 				fmt++;
 			break;
 
@@ -1577,10 +1577,10 @@ int vsscanf(const char *buf, const char *fmt, va_list args)
 			digit = *(str + 1);
 
 		if (!digit
-		    || (base == 16 && !isxdigit(digit))
-		    || (base == 10 && !isdigit(digit))
-		    || (base == 8 && (!isdigit(digit) || digit > '7'))
-		    || (base == 0 && !isdigit(digit)))
+		    || (base == 16 && !isxdigit((unsigned char)digit))
+		    || (base == 10 && !isdigit((unsigned char)digit))
+		    || (base == 8 && (!isdigit((unsigned char)digit) || digit > '7'))
+		    || (base == 0 && !isdigit((unsigned char)digit)))
 			break;
 
 		switch (qualifier) {

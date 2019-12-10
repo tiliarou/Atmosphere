@@ -13,13 +13,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <stratosphere/spl.hpp>
-
 #include "pinmux_initial_configuration.hpp"
 #include "pinmux_utils.hpp"
 
-namespace sts::pinmux {
+namespace ams::pinmux {
 
     namespace {
 
@@ -60,17 +57,14 @@ namespace sts::pinmux {
                     configs = InitialConfigsIowa;
                     num_configs = NumInitialConfigsIowa;
                     break;
-                default:
-                    /* Unknown hardware type, we can't proceed. */
-                    std::abort();
+                /* Unknown hardware type, we can't proceed. */
+                AMS_UNREACHABLE_DEFAULT_CASE();
             }
 
             /* Ensure we found an appropriate config. */
-            if (configs == nullptr) {
-                std::abort();
-            }
+            AMS_ASSERT(configs != nullptr);
 
-            for (size_t i = 0; i < num_configs - 1; i++) {
+            for (size_t i = 0; i < num_configs; i++) {
                 UpdatePad(configs[i].name, configs[i].val, configs[i].mask);
             }
 
@@ -79,7 +73,7 @@ namespace sts::pinmux {
                 static constexpr u32 ExtraIowaPadNames[] = {
                     0xAA, 0xAC, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9
                 };
-                for (size_t i = 0; i < sizeof(ExtraIowaPadNames) / sizeof(ExtraIowaPadNames[0]); i++) {
+                for (size_t i = 0; i < util::size(ExtraIowaPadNames); i++) {
                     UpdatePad(ExtraIowaPadNames[i], 0x2000, 0x2000);
                 }
             }

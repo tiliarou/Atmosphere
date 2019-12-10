@@ -13,13 +13,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <switch.h>
-#include <stratosphere.hpp>
-
 #include "i2c_driver_types.hpp"
 
-namespace sts::i2c::driver::impl {
+namespace ams::i2c::driver::impl {
 
     namespace {
 
@@ -67,7 +63,7 @@ namespace sts::i2c::driver::impl {
             {I2cDevice_Ina226VddDdr0V6, Bus::I2C2, 0x4e, AddressingMode::SevenBit, SpeedMode::Fast,   3, 5'000'000},
         };
 
-        constexpr size_t NumDeviceConfigs = sizeof(g_device_configs) / sizeof(g_device_configs[0]);
+        constexpr size_t NumDeviceConfigs = util::size(g_device_configs);
 
         constexpr size_t DeviceInvalidIndex = static_cast<size_t>(-1);
 
@@ -88,37 +84,37 @@ namespace sts::i2c::driver::impl {
 
     Bus GetDeviceBus(I2cDevice dev) {
         const size_t dev_idx = GetDeviceIndex(dev);
-        if (dev_idx == DeviceInvalidIndex) { std::abort(); }
+        AMS_ASSERT(dev_idx != DeviceInvalidIndex);
         return g_device_configs[dev_idx].bus;
     }
 
     u32 GetDeviceSlaveAddress(I2cDevice dev) {
         const size_t dev_idx = GetDeviceIndex(dev);
-        if (dev_idx == DeviceInvalidIndex) { std::abort(); }
+        AMS_ASSERT(dev_idx != DeviceInvalidIndex);
         return g_device_configs[dev_idx].slave_address;
     }
 
     AddressingMode GetDeviceAddressingMode(I2cDevice dev) {
         const size_t dev_idx = GetDeviceIndex(dev);
-        if (dev_idx == DeviceInvalidIndex) { std::abort(); }
+        AMS_ASSERT(dev_idx != DeviceInvalidIndex);
         return g_device_configs[dev_idx].addressing_mode;
     }
 
     SpeedMode GetDeviceSpeedMode(I2cDevice dev) {
         const size_t dev_idx = GetDeviceIndex(dev);
-        if (dev_idx == DeviceInvalidIndex) { std::abort(); }
+        AMS_ASSERT(dev_idx != DeviceInvalidIndex);
         return g_device_configs[dev_idx].speed_mode;
     }
 
     u32 GetDeviceMaxRetries(I2cDevice dev) {
         const size_t dev_idx = GetDeviceIndex(dev);
-        if (dev_idx == DeviceInvalidIndex) { std::abort(); }
+        AMS_ASSERT(dev_idx != DeviceInvalidIndex);
         return g_device_configs[dev_idx].max_retries;
     }
 
     u64 GetDeviceRetryWaitTime(I2cDevice dev) {
         const size_t dev_idx = GetDeviceIndex(dev);
-        if (dev_idx == DeviceInvalidIndex) { std::abort(); }
+        AMS_ASSERT(dev_idx != DeviceInvalidIndex);
         return g_device_configs[dev_idx].retry_wait_time;
     }
 

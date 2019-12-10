@@ -53,6 +53,8 @@ static bool is_user_keyslot_valid(unsigned int keyslot) {
         case ATMOSPHERE_TARGET_FIRMWARE_700:
         case ATMOSPHERE_TARGET_FIRMWARE_800:
         case ATMOSPHERE_TARGET_FIRMWARE_810:
+        case ATMOSPHERE_TARGET_FIRMWARE_900:
+        case ATMOSPHERE_TARGET_FIRMWARE_910:
         default:
             return keyslot <= 5;
     }
