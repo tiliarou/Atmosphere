@@ -23,6 +23,8 @@
 #include "ns_mitm/nsmitm_module.hpp"
 #include "hid_mitm/hidmitm_module.hpp"
 
+#include "fsp_usb/fspusb_module.hpp"
+
 namespace ams::mitm {
 
     namespace {
@@ -33,6 +35,7 @@ namespace ams::mitm {
             ModuleId_BpcMitm,
             ModuleId_NsMitm,
             ModuleId_HidMitm,
+            ModuleId_FspUsb,
 
             ModuleId_Count,
         };
@@ -64,6 +67,7 @@ namespace ams::mitm {
             GetModuleDefinition<bpc::MitmModule>(),
             GetModuleDefinition<ns::MitmModule>(),
             GetModuleDefinition<hid::MitmModule>(),
+            GetModuleDefinition<fspusb::MitmModule>(),
         };
 
     }
