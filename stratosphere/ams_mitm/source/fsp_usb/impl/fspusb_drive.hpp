@@ -7,7 +7,7 @@
 #include "fspusb_utils.hpp"
 #include "fspusb_scsi.hpp"
 
-namespace fspusb::impl {
+namespace ams::mitm::fspusb::impl {
 
     // Maximum amount of drives
     constexpr u32 DriveMax = FF_VOLUMES;
@@ -17,7 +17,7 @@ namespace fspusb::impl {
             NON_MOVEABLE(Drive);
 
         private:
-            ams::os::Mutex fs_lock;
+            os::Mutex fs_lock;
             UsbHsClientIfSession usb_interface;
             UsbHsClientEpSession usb_in_endpoint;
             UsbHsClientEpSession usb_out_endpoint;
@@ -92,6 +92,6 @@ namespace fspusb::impl {
             }
     };
 
-    /* For convenience :P */
+    /* For convenience */
     using DrivePointer = std::unique_ptr<Drive>;
 }

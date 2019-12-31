@@ -2,9 +2,9 @@
 #pragma once
 #include "impl/fspusb_usb_manager.hpp"
 
-namespace fspusb {
+namespace ams::mitm::fspusb {
 
-    class DriveFile : public ams::fs::fsa::IFile {
+    class DriveFile : public fs::fsa::IFile {
 
         private:
             u32 idx;
@@ -22,7 +22,7 @@ namespace fspusb {
                 f_close(&this->file);
             }
 
-            virtual ams::Result ReadImpl(size_t *out, s64 offset, void *buffer, size_t size, const ams::fs::ReadOption &option) override final {
+            virtual Result ReadImpl(size_t *out, s64 offset, void *buffer, size_t size, const fs::ReadOption &option) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
 
                 auto ffrc = f_lseek(&this->file, offset);
@@ -37,20 +37,20 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result GetSizeImpl(s64 *out) override final {
+            virtual Result GetSizeImpl(s64 *out) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
 
                 *out = f_size(&this->file);
 
-                return ams::ResultSuccess();
+                return ResultSuccess();
             }
 
-            virtual ams::Result FlushImpl() override final {
+            virtual Result FlushImpl() override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
-                return ams::ResultSuccess();
+                return ResultSuccess();
             }
 
-            virtual ams::Result WriteImpl(s64 offset, const void *buffer, size_t size, const ams::fs::WriteOption &option) override final {
+            virtual Result WriteImpl(s64 offset, const void *buffer, size_t size, const fs::WriteOption &option) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
 
                 auto ffrc = f_lseek(&this->file, offset);
@@ -67,7 +67,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result SetSizeImpl(s64 size) override final {
+            virtual Result SetSizeImpl(s64 size) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
 
                 auto ffrc = f_lseek(&this->file, size);
@@ -75,13 +75,13 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result OperateRangeImpl(void *dst, size_t dst_size, ams::fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override final {
+            virtual Result OperateRangeImpl(void *dst, size_t dst_size, fs::OperationId op_id, s64 offset, s64 size, const void *src, size_t src_size) override final {
                 /* TODO: How should this be handled? */
-                return ams::fs::ResultNotImplemented();
+                return fs::ResultNotImplemented();
             }
 
-            virtual ams::sf::cmif::DomainObjectId GetDomainObjectId() const override {
-                return ams::sf::cmif::InvalidDomainObjectId;
+            virtual sf::cmif::DomainObjectId GetDomainObjectId() const override {
+                return sf::cmif::InvalidDomainObjectId;
             }
     };
 

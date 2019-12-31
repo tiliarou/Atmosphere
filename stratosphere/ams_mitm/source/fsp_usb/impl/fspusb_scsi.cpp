@@ -1,13 +1,13 @@
 #include "fspusb_scsi.hpp"
 
-namespace fspusb::impl {
+namespace ams::mitm::fspusb::impl {
 
     SCSIBuffer::SCSIBuffer() {
-        memset(this->storage, 0, BufferSize);
+        std::memset(this->storage, 0, BufferSize);
     }
 
     void SCSIBuffer::Write8(u8 val) {
-        memcpy(&this->storage[this->idx], &val, sizeof(u8));
+        std::memcpy(&this->storage[this->idx], &val, sizeof(u8));
         this->idx += sizeof(u8);
     }
 
@@ -17,19 +17,19 @@ namespace fspusb::impl {
 
     void SCSIBuffer::Write16BE(u32 val) {
         u16 tmpval = __builtin_bswap16(val);
-        memcpy(&this->storage[this->idx], &tmpval, sizeof(u16));
+        std::memcpy(&this->storage[this->idx], &tmpval, sizeof(u16));
         this->idx += sizeof(u16);
     }
 
     void SCSIBuffer::Write32(u32 val) {
-        memcpy(&this->storage[this->idx], &val, sizeof(u32));
+        std::memcpy(&this->storage[this->idx], &val, sizeof(u32));
         this->idx += sizeof(u32);
     }
 
     void SCSIBuffer::Write32BE(u32 val)
     {
         u32 tmpval = __builtin_bswap32(val);
-        memcpy(&this->storage[this->idx], &tmpval, sizeof(u32));
+        std::memcpy(&this->storage[this->idx], &tmpval, sizeof(u32));
         this->idx += sizeof(u32);
     }
 
@@ -63,11 +63,11 @@ namespace fspusb::impl {
 
     void SCSICommand::ToBytes(u8 *out) {
         auto buffer = this->ProduceBuffer();
-        memcpy(out, buffer.GetStorage(), SCSIBuffer::BufferSize);
+        std::memcpy(out, buffer.GetStorage(), SCSIBuffer::BufferSize);
     }
 
     void SCSICommand::WriteHeader(SCSIBuffer &out) {
-        out.Write32(SCSI_CBW_SIGNATURE);
+        out.Write32(SCSICBWSignature);
         out.Write32(this->tag);
         out.Write32(this->data_transfer_length);
         out.Write8(this->flags);
@@ -196,7 +196,7 @@ namespace fspusb::impl {
         if(this->ok) {
             auto rc = usbHsEpPostBuffer(this->out_endpoint, this->buf_c, 0x10, &out_len);
             if(R_SUCCEEDED(rc)) {
-                memcpy(&status, this->buf_c, sizeof(status));
+                std::memcpy(&status, this->buf_c, sizeof(status));
             }
             else {
                 this->ok = false;
@@ -208,7 +208,7 @@ namespace fspusb::impl {
 
     void SCSIDevice::PushCommand(SCSICommand &cmd) {
         if(this->ok) {
-            memset(this->buf_a, 0, BufferSize);
+            std::memset(this->buf_a, 0, BufferSize);
             cmd.ToBytes(this->buf_a);
 
             u32 out_len;
@@ -234,7 +234,7 @@ namespace fspusb::impl {
                             {
                                 u32 signature;
                                 memcpy(&signature, this->buf_b, 4);
-                                if(signature == SCSI_CSW_SIGNATURE) {
+                                if(signature == SCSICSWSignature) {
 
                                     /* We weren't expecting a CSW, but we got one anyway */
                                     SCSICommandStatus status = {};
@@ -255,7 +255,7 @@ namespace fspusb::impl {
                 }
                 else {
                     while(total_transferred < transfer_length) {
-                        memcpy(this->buf_b, buffer + total_transferred, transfer_length - total_transferred);
+                        std::memcpy(this->buf_b, buffer + total_transferred, transfer_length - total_transferred);
                         auto rc = usbHsEpPostBuffer(this->in_endpoint, this->buf_b, transfer_length - total_transferred, &transferred);
                         if(R_SUCCEEDED(rc)) {
                             total_transferred += transferred;
@@ -298,18 +298,18 @@ namespace fspusb::impl {
             u32 size_lba;
             u32 lba_bytes;
             status = this->device->TransferCommand(read_capacity, read_capacity_response, 8);
-            memcpy(&size_lba, &read_capacity_response[0], 4);
+            std::memcpy(&size_lba, &read_capacity_response[0], 4);
             size_lba = __builtin_bswap32(size_lba);
-            memcpy(&lba_bytes, &read_capacity_response[4], 4);
+            std::memcpy(&lba_bytes, &read_capacity_response[4], 4);
             lba_bytes = __builtin_bswap32(lba_bytes);
             this->capacity = size_lba * lba_bytes;
             this->block_size = lba_bytes;
             u8 mbr[0x200];
             this->ReadSectors(mbr, 0, 1);
-            memcpy(&this->partition_infos[0], &mbr[0x1be], sizeof(this->partition_infos[0]));
-            memcpy(&this->partition_infos[1], &mbr[0x1ce], sizeof(this->partition_infos[1]));
-            memcpy(&this->partition_infos[2], &mbr[0x1de], sizeof(this->partition_infos[2]));
-            memcpy(&this->partition_infos[3], &mbr[0x1ee], sizeof(this->partition_infos[3]));
+            std::memcpy(&this->partition_infos[0], &mbr[0x1be], sizeof(this->partition_infos[0]));
+            std::memcpy(&this->partition_infos[1], &mbr[0x1ce], sizeof(this->partition_infos[1]));
+            std::memcpy(&this->partition_infos[2], &mbr[0x1de], sizeof(this->partition_infos[2]));
+            std::memcpy(&this->partition_infos[3], &mbr[0x1ee], sizeof(this->partition_infos[3]));
 
             bool all_empty = true;
             for(u32 i = 0; i < 4; i++) {
@@ -319,7 +319,7 @@ namespace fspusb::impl {
                 }
             }
             
-            /* If all partitions aren't initialized... :P */
+            /* If all partitions aren't initialized, don't continue with this drive */
             if(all_empty) {
                 this->ok = false;
             }

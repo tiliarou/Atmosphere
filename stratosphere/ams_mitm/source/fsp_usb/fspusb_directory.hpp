@@ -2,9 +2,9 @@
 #pragma once
 #include "impl/fspusb_usb_manager.hpp"
 
-namespace fspusb {
+namespace ams::mitm::fspusb {
 
-    class DriveDirectory : public ams::fs::fsa::IDirectory {
+    class DriveDirectory : public fs::fsa::IDirectory {
 
         private:
             s32 usb_iface_id;
@@ -21,11 +21,11 @@ namespace fspusb {
                 f_closedir(&this->directory);
             }
 
-            virtual ams::Result ReadImpl(s64 *out_count, ams::fs::DirectoryEntry *out_entries, s64 max_entries) override final {
+            virtual Result ReadImpl(s64 *out_count, fs::DirectoryEntry *out_entries, s64 max_entries) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
 
                 auto ffrc = FR_OK;
-                ams::fs::DirectoryEntry entry = {};
+                fs::DirectoryEntry entry = {};
                 FILINFO info = {};
                 s64 count = 0;
                 while(true) {
@@ -36,7 +36,7 @@ namespace fspusb {
                     if((ffrc != FR_OK) || (info.fname[0] == '\0')) {
                         break;
                     }
-                    memset(&entry, 0, sizeof(ams::fs::DirectoryEntry));
+                    memset(&entry, 0, sizeof(fs::DirectoryEntry));
                     strcpy(entry.name, info.fname);
                     /* Fill in the DirectoryEntry struct, then copy back to the buffer */
                     if(info.fattrib & AM_DIR) {
@@ -54,7 +54,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result GetEntryCountImpl(s64 *out) override final {
+            virtual Result GetEntryCountImpl(s64 *out) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
 
                 s64 count = 0;
@@ -72,8 +72,8 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::sf::cmif::DomainObjectId GetDomainObjectId() const override {
-                return ams::sf::cmif::InvalidDomainObjectId;
+            virtual sf::cmif::DomainObjectId GetDomainObjectId() const override {
+                return sf::cmif::InvalidDomainObjectId;
             }
 
     };

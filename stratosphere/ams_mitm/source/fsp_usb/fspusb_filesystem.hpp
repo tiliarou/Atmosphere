@@ -3,9 +3,9 @@
 #include "fspusb_file.hpp" 
 #include "fspusb_directory.hpp"
 
-namespace fspusb {
+namespace ams::mitm::fspusb {
 
-    class DriveFileSystem : public ams::fs::fsa::IFileSystem {
+    class DriveFileSystem : public fs::fsa::IFileSystem {
 
         private:
             u32 idx;
@@ -39,7 +39,7 @@ namespace fspusb {
                 impl::FormatDriveMountName(this->mount_name, this->idx);
             }
 
-            virtual ams::Result CreateFileImpl(const char *path, s64 size, int flags) override final {
+            virtual Result CreateFileImpl(const char *path, s64 size, int flags) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
@@ -58,7 +58,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result DeleteFileImpl(const char *path) override final {
+            virtual Result DeleteFileImpl(const char *path) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
@@ -72,7 +72,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result CreateDirectoryImpl(const char *path) override final {
+            virtual Result CreateDirectoryImpl(const char *path) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
@@ -86,7 +86,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result DeleteDirectoryImpl(const char *path) override final {
+            virtual Result DeleteDirectoryImpl(const char *path) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
@@ -100,12 +100,12 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result DeleteDirectoryRecursivelyImpl(const char *path) override final {
+            virtual Result DeleteDirectoryRecursivelyImpl(const char *path) override final {
                 /* TODO: this isn't recursive, make a proper implementation */
                 return this->DeleteDirectoryImpl(path);
             }
 
-            virtual ams::Result RenameFileImpl(const char *old_path, const char *new_path) override final {
+            virtual Result RenameFileImpl(const char *old_path, const char *new_path) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 
                 char ffoldpath[FS_MAX_PATH] = {0};
@@ -121,12 +121,12 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result RenameDirectoryImpl(const char *old_path, const char *new_path) override final {
+            virtual Result RenameDirectoryImpl(const char *old_path, const char *new_path) override final {
                 /* TODO: are these really the same? */
                 return this->RenameFileImpl(old_path, new_path);
             }
 
-            virtual ams::Result GetEntryTypeImpl(ams::fs::DirectoryEntryType *out, const char *path) override final {
+            virtual Result GetEntryTypeImpl(fs::DirectoryEntryType *out, const char *path) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
@@ -138,10 +138,10 @@ namespace fspusb {
                     ffrc = f_stat(ffpath, &finfo);
                     if(ffrc == FR_OK) {
                         if(finfo.fattrib & AM_DIR) {
-                            *out = ams::fs::DirectoryEntryType_Directory;
+                            *out = fs::DirectoryEntryType_Directory;
                         }
                         else {
-                            *out = ams::fs::DirectoryEntryType_File;
+                            *out = fs::DirectoryEntryType_File;
                         }
                     }
                 });
@@ -149,20 +149,20 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result OpenFileImpl(std::unique_ptr<ams::fs::fsa::IFile> *out_file, const char *path, ams::fs::OpenMode mode) override final {
+            virtual Result OpenFileImpl(std::unique_ptr<fs::fsa::IFile> *out_file, const char *path, fs::OpenMode mode) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
 
                 BYTE openmode = FA_OPEN_ALWAYS;
-                if(mode & ams::fs::OpenMode_Append) {
+                if(mode & fs::OpenMode_Append) {
                     openmode = FA_OPEN_APPEND;
                 }
-                if(mode & ams::fs::OpenMode_Read) {
+                if(mode & fs::OpenMode_Read) {
                     openmode |= FA_READ;
                 }
-                if(mode & ams::fs::OpenMode_Write) {
+                if(mode & fs::OpenMode_Write) {
                     openmode |= FA_WRITE;
                 }
 
@@ -179,7 +179,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result OpenDirectoryImpl(std::unique_ptr<ams::fs::fsa::IDirectory> *out_dir, const char *path, ams::fs::OpenDirectoryMode mode) override final {
+            virtual Result OpenDirectoryImpl(std::unique_ptr<fs::fsa::IDirectory> *out_dir, const char *path, fs::OpenDirectoryMode mode) override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
@@ -198,12 +198,12 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result CommitImpl() override final {
+            virtual Result CommitImpl() override final {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
-                return ams::ResultSuccess();
+                return ResultSuccess();
             }
 
-            virtual ams::Result GetFreeSpaceSizeImpl(s64 *out, const char *path) {
+            virtual Result GetFreeSpaceSizeImpl(s64 *out, const char *path) {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
 
                 char ffpath[FS_MAX_PATH] = {0};
@@ -229,7 +229,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result GetTotalSpaceSizeImpl(s64 *out, const char *path) {
+            virtual Result GetTotalSpaceSizeImpl(s64 *out, const char *path) {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
 
                 char ffpath[FS_MAX_PATH] = {0};
@@ -255,7 +255,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            virtual ams::Result CleanDirectoryRecursivelyImpl(const char *path) {
+            virtual Result CleanDirectoryRecursivelyImpl(const char *path) {
                 /* TODO: clean = delete everything except the dir itself? */
                 auto rc = this->DeleteDirectoryRecursivelyImpl(path);
                 if(R_SUCCEEDED(rc)) {
@@ -264,16 +264,16 @@ namespace fspusb {
                 return rc;
             }
 
-            virtual ams::Result GetFileTimeStampRawImpl(ams::fs::FileTimeStampRaw *out, const char *path) {
+            virtual Result GetFileTimeStampRawImpl(fs::FileTimeStampRaw *out, const char *path) {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 /* TODO */
-                return ams::ResultSuccess();
+                return ResultSuccess();
             }
 
-            virtual ams::Result QueryEntryImpl(char *dst, size_t dst_size, const char *src, size_t src_size, ams::fs::fsa::QueryId query, const char *path) {
+            virtual Result QueryEntryImpl(char *dst, size_t dst_size, const char *src, size_t src_size, fs::fsa::QueryId query, const char *path) {
                 R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
                 /* TODO */
-                return ams::ResultSuccess();
+                return ResultSuccess();
             }
     };
 

@@ -13,16 +13,20 @@
 #include "diskio.h"
 #include "../impl/fspusb_usb_manager.hpp"
 
-static u8 GetDriveStatus(u32 drv_idx) {
-	u8 status = STA_NOINIT;
+namespace {
 
-	fspusb::impl::DoWithDrive(drv_idx, [&](fspusb::impl::DrivePointer &drive_ptr) {
-		if(drive_ptr->IsSCSIOk()) {
-			status = 0;
-		}
-	});
+	u8 GetDriveStatus(u32 drv_idx) {
+		u8 status = STA_NOINIT;
 
-	return status;
+		ams::mitm::fspusb::impl::DoWithDrive(drv_idx, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
+			if(drive_ptr->IsSCSIOk()) {
+				status = 0;
+			}
+		});
+
+		return status;
+	}
+
 }
 
 /*-----------------------------------------------------------------------*/
@@ -64,7 +68,7 @@ extern "C" DRESULT disk_read (
 {
 	auto res = RES_PARERR;
 
-	fspusb::impl::DoWithDrive((u32)pdrv, [&](fspusb::impl::DrivePointer &drive_ptr) {
+	ams::mitm::fspusb::impl::DoWithDrive((u32)pdrv, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
 		auto part_idx = drive_ptr->GetValidPartitionIndex();
 		if(part_idx < 4) {
 			res = drive_ptr->DoReadSectors(part_idx, buff, sector, count);
@@ -91,7 +95,7 @@ extern "C" DRESULT disk_write (
 {
 	auto res = RES_PARERR;
 
-	fspusb::impl::DoWithDrive((u32)pdrv, [&](fspusb::impl::DrivePointer &drive_ptr) {
+	ams::mitm::fspusb::impl::DoWithDrive((u32)pdrv, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
 		auto part_idx = drive_ptr->GetValidPartitionIndex();
 		if(part_idx < 4) {
 			res = drive_ptr->DoWriteSectors(0, buff, sector, count);

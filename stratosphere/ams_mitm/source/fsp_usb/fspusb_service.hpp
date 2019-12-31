@@ -6,9 +6,9 @@
 
 using IFileSystemInterface = ams::fssrv::impl::FileSystemInterfaceAdapter;
 
-namespace fspusb {
+namespace ams::mitm::fspusb {
 
-    class Service : public ams::sf::IServiceObject {
+    class Service : public sf::IServiceObject {
 
         private:
             enum class CommandId {
@@ -20,21 +20,21 @@ namespace fspusb {
             };
 
         public:
-            void GetMountedDriveCount(ams::sf::Out<u32> out_count) {
+            void GetMountedDriveCount(sf::Out<u32> out_count) {
                 out_count.SetValue(impl::GetAcquiredDriveCount());
             }
 
-            ams::Result GetDriveFileSystemType(u32 drive_idx, ams::sf::Out<u8> out_fs_type) {
+            Result GetDriveFileSystemType(u32 drive_idx, sf::Out<u8> out_fs_type) {
                 R_UNLESS(impl::IsValidDriveIndex(drive_idx), ResultInvalidDriveIndex());
 
                 impl::DoWithDriveFATFS(drive_idx, [&](FATFS *fs) {
                     out_fs_type.SetValue(fs->fs_type);
                 });
 
-                return ams::ResultSuccess();
+                return ResultSuccess();
             }
 
-            ams::Result GetDriveLabel(u32 drive_idx, ams::sf::OutBuffer &out_label_str) {
+            Result GetDriveLabel(u32 drive_idx, sf::OutBuffer &out_label_str) {
                 R_UNLESS(impl::IsValidDriveIndex(drive_idx), ResultInvalidDriveIndex());
 
                 char mountname[0x10] = {0};
@@ -44,7 +44,7 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            ams::Result SetDriveLabel(u32 drive_idx, ams::sf::InBuffer &label_str) {
+            Result SetDriveLabel(u32 drive_idx, sf::InBuffer &label_str) {
                 R_UNLESS(impl::IsValidDriveIndex(drive_idx), ResultInvalidDriveIndex());
 
                 char mountname[0x10] = {0};
@@ -57,13 +57,13 @@ namespace fspusb {
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            ams::Result OpenDriveFileSystem(u32 drive_idx, ams::sf::Out<std::shared_ptr<IFileSystemInterface>> out_fs) {
+            Result OpenDriveFileSystem(u32 drive_idx, sf::Out<std::shared_ptr<IFileSystemInterface>> out_fs) {
                 R_UNLESS(impl::IsValidDriveIndex(drive_idx), ResultInvalidDriveIndex());
 
-                std::shared_ptr<ams::fs::fsa::IFileSystem> drv_fs = std::make_shared<DriveFileSystem>(drive_idx);
+                std::shared_ptr<fs::fsa::IFileSystem> drv_fs = std::make_shared<DriveFileSystem>(drive_idx);
                 out_fs.SetValue(std::make_shared<IFileSystemInterface>(std::move(drv_fs), false));
 
-                return ams::ResultSuccess();
+                return ResultSuccess();
             }
 
             DEFINE_SERVICE_DISPATCH_TABLE {

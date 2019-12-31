@@ -2,13 +2,17 @@
 #include <vector>
 #include <memory>
 
-namespace fspusb::impl {
+namespace ams::mitm::fspusb::impl {
 
-    ams::os::Mutex g_usb_manager_lock;
-    std::vector<DrivePointer> g_usb_manager_drives;
-    Event g_usb_manager_interface_available_event;
-    UsbHsInterfaceFilter g_usb_manager_device_filter = {};
-    bool g_usb_manager_initialized = false;
+    namespace {
+
+        os::Mutex g_usb_manager_lock;
+        std::vector<DrivePointer> g_usb_manager_drives;
+        Event g_usb_manager_interface_available_event;
+        UsbHsInterfaceFilter g_usb_manager_device_filter = {};
+        bool g_usb_manager_initialized = false;
+
+    }
 
     Result InitializeManager() {
 
@@ -17,20 +21,17 @@ namespace fspusb::impl {
             return 0;
         }
 
-        auto rc = usbHsInitialize();
-        if(R_SUCCEEDED(rc)) {
-            g_usb_manager_device_filter = {};
-            g_usb_manager_device_filter.Flags = UsbHsInterfaceFilterFlags_bInterfaceClass | UsbHsInterfaceFilterFlags_bInterfaceSubClass | UsbHsInterfaceFilterFlags_bInterfaceProtocol;
-            g_usb_manager_device_filter.bInterfaceClass = 8;
-            g_usb_manager_device_filter.bInterfaceSubClass = 6;
-            g_usb_manager_device_filter.bInterfaceProtocol = 80;
-            rc = usbHsCreateInterfaceAvailableEvent(&g_usb_manager_interface_available_event, false, 0, &g_usb_manager_device_filter);
-            if(R_SUCCEEDED(rc)) {
-                g_usb_manager_initialized = true;
-            }
-        }
+        R_TRY(usbHsInitialize());
+        g_usb_manager_device_filter = {};
+        g_usb_manager_device_filter.Flags = UsbHsInterfaceFilterFlags_bInterfaceClass | UsbHsInterfaceFilterFlags_bInterfaceSubClass | UsbHsInterfaceFilterFlags_bInterfaceProtocol;
+        g_usb_manager_device_filter.bInterfaceClass = 8;
+        g_usb_manager_device_filter.bInterfaceSubClass = 6;
+        g_usb_manager_device_filter.bInterfaceProtocol = 80;
 
-        return rc;
+        R_TRY(usbHsCreateInterfaceAvailableEvent(&g_usb_manager_interface_available_event, false, 0, &g_usb_manager_device_filter));
+        g_usb_manager_initialized = true;
+
+        return ResultSuccess();
     }
 
     void UpdateLoop() {
@@ -53,6 +54,7 @@ namespace fspusb::impl {
                             break;
                         }
                     }
+
                     if(ok) {
                         valid_drives.push_back(std::move(drive));
                     }
@@ -98,7 +100,6 @@ namespace fspusb::impl {
 
                             /* Since FATFS reads from drives in the vector and we need to mount it, push it to the vector first */
                             /* Then, if it didn't mount correctly, pop from the vector and close the interface */
-
                             auto drv = std::make_unique<Drive>(iface, inep, outep);
                             u32 driveidx = g_usb_manager_drives.size();
                             g_usb_manager_drives.push_back(std::move(drv));

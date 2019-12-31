@@ -3,7 +3,7 @@
 #include "fspusb_drive.hpp"
 #include <functional>
 
-namespace fspusb::impl {
+namespace ams::mitm::fspusb::impl {
 
     Result InitializeManager();
     void UpdateLoop();

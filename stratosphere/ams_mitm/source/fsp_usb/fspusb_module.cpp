@@ -36,17 +36,17 @@ namespace ams::mitm::fspusb {
     }
 
     void MitmModule::ThreadFunction(void *arg) {
-        R_ASSERT(::fspusb::impl::InitializeManager());
+        R_ASSERT(impl::InitializeManager());
 
-        ams::os::Thread usb_thread;
-        R_ASSERT(usb_thread.Initialize(&::fspusb::impl::ManagerUpdateThread, nullptr, 0x4000, 0x15));
+        os::Thread usb_thread;
+        R_ASSERT(usb_thread.Initialize(&impl::ManagerUpdateThread, nullptr, 0x4000, 0x15));
         R_ASSERT(usb_thread.Start());
 
-        R_ASSERT(g_server_manager.RegisterServer<::fspusb::Service>(ServiceName, MaxSessions));
+        R_ASSERT(g_server_manager.RegisterServer<Service>(ServiceName, MaxSessions));
 
         g_server_manager.LoopProcess();
 
-        ::fspusb::impl::FinalizeManager();
+        impl::FinalizeManager();
     }
 
 }

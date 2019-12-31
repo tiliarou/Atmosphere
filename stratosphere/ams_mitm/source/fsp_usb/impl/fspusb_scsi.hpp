@@ -2,14 +2,10 @@
 #pragma once
 #include "fspusb_utils.hpp"
 
-#define SCSI_CBW_SIGNATURE 0x43425355
-#define SCSI_COMMAND_PASSED 0
-#define SCSI_COMMAND_FAILED 1
-#define SCSI_PHASE_ERROR 2
-#define SCSI_CSW_SIZE 13
-#define SCSI_CSW_SIGNATURE 0x53425355
+namespace ams::mitm::fspusb::impl {
 
-namespace fspusb::impl {
+    constexpr u32 SCSICBWSignature = 0x43425355;
+    constexpr u32 SCSICSWSignature = 0x53425355;
 
     enum class SCSIDirection {
         None,

@@ -3,7 +3,7 @@
 #include <stratosphere.hpp>
 #include "fatfs/ff.h"
 
-namespace fspusb {
+namespace ams::mitm::fspusb {
 
     R_DEFINE_NAMESPACE_RESULT_MODULE(2);
 
@@ -16,32 +16,32 @@ namespace fspusb {
 
     namespace result {
 
-        NX_CONSTEXPR ams::Result CreateFromFRESULT(FRESULT err) {
+        NX_CONSTEXPR Result CreateFromFRESULT(FRESULT err) {
             switch(err) {
                 case FR_OK:
-                    return ams::ResultSuccess();
+                    return ResultSuccess();
 
                 case FR_NO_FILE:
                 case FR_NO_PATH:
                 case FR_INVALID_NAME:
-                    return ams::fs::ResultPathNotFound();
+                    return fs::ResultPathNotFound();
 
                 case FR_EXIST:
-                    return ams::fs::ResultPathAlreadyExists();
+                    return fs::ResultPathAlreadyExists();
 
                 case FR_WRITE_PROTECTED:
-                    return ams::fs::ResultUnsupportedOperation();
+                    return fs::ResultUnsupportedOperation();
 
                 case FR_INVALID_DRIVE:
-                    return ams::fs::ResultInvalidMountName();
+                    return fs::ResultInvalidMountName();
 
                 case FR_INVALID_PARAMETER:
-                    return ams::fs::ResultInvalidArgument();
+                    return fs::ResultInvalidArgument();
 
                 /* TODO: more FATFS errors */
 
                 default:
-                    return MAKERESULT(fspusb::impl::result::ResultModuleId, 8100 + err);
+                    return MAKERESULT(impl::result::ResultModuleId, 8100 + err);
             }
         }
 
