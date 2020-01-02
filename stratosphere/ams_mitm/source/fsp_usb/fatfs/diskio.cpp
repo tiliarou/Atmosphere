@@ -13,6 +13,8 @@
 #include "diskio.h"
 #include "../impl/fspusb_usb_manager.hpp"
 
+/* Reference for needed FatFS impl functions: http://irtos.sourceforge.net/FAT32_ChaN/doc/en/appnote.html#port */
+
 namespace {
 
 	u8 GetDriveStatus(u32 drv_idx) {
@@ -69,10 +71,7 @@ extern "C" DRESULT disk_read (
 	auto res = RES_PARERR;
 
 	ams::mitm::fspusb::impl::DoWithDrive((u32)pdrv, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
-		auto part_idx = drive_ptr->GetValidPartitionIndex();
-		if(part_idx < 4) {
-			res = drive_ptr->DoReadSectors(part_idx, buff, sector, count);
-		}
+		res = drive_ptr->DoReadSectors(buff, sector, count);
 	});
 
 	return res;
@@ -96,10 +95,7 @@ extern "C" DRESULT disk_write (
 	auto res = RES_PARERR;
 
 	ams::mitm::fspusb::impl::DoWithDrive((u32)pdrv, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
-		auto part_idx = drive_ptr->GetValidPartitionIndex();
-		if(part_idx < 4) {
-			res = drive_ptr->DoWriteSectors(0, buff, sector, count);
-		}
+		res = drive_ptr->DoWriteSectors(buff, sector, count);
 	});
 	
 	return res;
@@ -120,5 +116,5 @@ extern "C" DRESULT disk_ioctl (
 {
 	/* Shall we implement any ioctls here? */
 
-	return RES_PARERR;
+	return RES_OK;
 }
