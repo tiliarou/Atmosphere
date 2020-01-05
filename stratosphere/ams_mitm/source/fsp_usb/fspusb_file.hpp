@@ -7,12 +7,11 @@ namespace ams::mitm::fspusb {
     class DriveFile : public fs::fsa::IFile {
 
         private:
-            u32 idx;
             s32 usb_iface_id;
             FIL file;
 
-            bool IsDriveOk() {
-                return impl::IsDriveOk(this->usb_iface_id);
+            bool IsDriveInterfaceIdValid() {
+                return impl::IsDriveInterfaceIdValid(this->usb_iface_id);
             }
 
         public:
@@ -23,7 +22,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result ReadImpl(size_t *out, s64 offset, void *buffer, size_t size, const fs::ReadOption &option) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 auto ffrc = f_lseek(&this->file, (u64)offset);
                 if(ffrc == FR_OK) {
@@ -39,7 +38,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result GetSizeImpl(s64 *out) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 *out = (s64)f_size(&this->file);
 
@@ -47,12 +46,12 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result FlushImpl() override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 return ResultSuccess();
             }
 
             virtual Result WriteImpl(s64 offset, const void *buffer, size_t size, const fs::WriteOption &option) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 auto ffrc = f_lseek(&this->file, (u64)offset);
                 if(ffrc == FR_OK) {
@@ -66,7 +65,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result SetSizeImpl(s64 size) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 u64 new_size = (u64)size;
                 u64 cur_size = f_size(&this->file);

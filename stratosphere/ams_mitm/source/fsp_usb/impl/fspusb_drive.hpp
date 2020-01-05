@@ -22,13 +22,14 @@ namespace ams::mitm::fspusb::impl {
             UsbHsClientEpSession usb_in_endpoint;
             UsbHsClientEpSession usb_out_endpoint;
             FATFS fat_fs;
+            u32 mounted_idx;
             char mount_name[0x10];
             SCSIDriveContext *scsi_context;
             bool mounted;
 
         public:
             Drive(UsbHsClientIfSession interface, UsbHsClientEpSession in_ep, UsbHsClientEpSession out_ep);
-            Result Mount(u32 drive_idx);
+            Result Mount();
             void Unmount();
             void Dispose();
 
@@ -38,6 +39,10 @@ namespace ams::mitm::fspusb::impl {
 
             SCSIDriveContext *GetSCSIContext() {
                 return this->scsi_context;
+            }
+
+            u32 GetMountedIndex() {
+                return this->mounted_idx;
             }
 
             u32 GetBlockSize()

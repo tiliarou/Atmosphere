@@ -38,18 +38,21 @@ namespace ams::mitm::fspusb {
     }
 
     void MitmModule::ThreadFunction(void *arg) {
-        /* Wait for time and usb:hs to be accessible */
+        /* Wait for services to be accessible */
         svcSleepThread(20'000'000'000L);
         
         sm::DoWithSession([&]() {
             R_ASSERT(impl::InitializeManager());
             R_ASSERT(timeInitialize());
+
+            R_ASSERT(fsdevMountSdmc());
         });
 
         R_ASSERT(g_server_manager.RegisterServer<Service>(ServiceName, MaxSessions));
 
         g_server_manager.LoopProcess();
 
+        timeExit();
         impl::FinalizeManager();
     }
 

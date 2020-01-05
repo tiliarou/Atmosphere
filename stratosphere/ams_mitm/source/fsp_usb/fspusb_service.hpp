@@ -12,7 +12,7 @@ namespace ams::mitm::fspusb {
 
         private:
             enum class CommandId {
-                GetMountedDriveCount = 0,
+                ListMountedDrives = 0,
                 GetDriveFileSystemType = 1,
                 GetDriveLabel = 2,
                 SetDriveLabel = 3,
@@ -20,54 +20,72 @@ namespace ams::mitm::fspusb {
             };
 
         public:
-            void GetMountedDriveCount(sf::Out<u32> out_count) {
-                out_count.SetValue(impl::GetAcquiredDriveCount());
+            void ListMountedDrives(const sf::OutArray<s32> &out_interface_ids, sf::Out<s32> out_count) {
+                impl::DoUpdateDrives();
+                size_t drive_count = impl::GetAcquiredDriveCount();
+                size_t buf_drive_count = std::min(drive_count, out_interface_ids.GetSize());
+
+                for(u32 i = 0; i < buf_drive_count; i++) {
+                    out_interface_ids[i] = impl::GetDriveInterfaceId(i);
+                }
+
+                out_count.SetValue(static_cast<s32>(buf_drive_count));
             }
 
-            Result GetDriveFileSystemType(u32 drive_idx, sf::Out<u8> out_fs_type) {
-                R_UNLESS(impl::IsValidDriveIndex(drive_idx), ResultInvalidDriveIndex());
+            Result GetDriveFileSystemType(s32 drive_interface_id, sf::Out<u8> out_fs_type) {
+                impl::DoUpdateDrives();
+                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveIndex());
 
-                impl::DoWithDriveFATFS(drive_idx, [&](FATFS *fs) {
+                impl::DoWithDriveFATFS(drive_interface_id, [&](FATFS *fs) {
                     out_fs_type.SetValue(fs->fs_type);
                 });
 
                 return ResultSuccess();
             }
 
-            Result GetDriveLabel(u32 drive_idx, sf::OutBuffer &out_label_str) {
-                R_UNLESS(impl::IsValidDriveIndex(drive_idx), ResultInvalidDriveIndex());
+            Result GetDriveLabel(s32 drive_interface_id, sf::OutBuffer &out_label_str) {
+                impl::DoUpdateDrives();
+                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveIndex());
 
+                auto drive_mounted_idx = impl::GetDriveMountedIndex(drive_interface_id);
                 char mountname[0x10] = {0};
-                impl::FormatDriveMountName(mountname, drive_idx);
+                impl::FormatDriveMountName(mountname, drive_mounted_idx);
 
-                auto ffrc = f_getlabel(mountname, (char*)out_label_str.GetPointer(), nullptr);
+                auto ffrc = f_getlabel(mountname, reinterpret_cast<char*>(out_label_str.GetPointer()), nullptr);
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            Result SetDriveLabel(u32 drive_idx, sf::InBuffer &label_str) {
-                R_UNLESS(impl::IsValidDriveIndex(drive_idx), ResultInvalidDriveIndex());
+            Result SetDriveLabel(s32 drive_interface_id, sf::InBuffer &label_str) {
+                impl::DoUpdateDrives();
+                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveIndex());
 
+                auto drive_mounted_idx = impl::GetDriveMountedIndex(drive_interface_id);
                 char mountname[0x10] = {0};
-                impl::FormatDriveMountName(mountname, drive_idx);
+                impl::FormatDriveMountName(mountname, drive_mounted_idx);
+
+                char label[0x10] = {0};
+                /* Check that no more than 11 characters are copied */
+                snprintf(label, 11, "%s", reinterpret_cast<const char*>(label_str.GetPointer()));
 
                 char newname[0x100] = {0};
-                sprintf(newname, "%s%s", mountname, (char*)label_str.GetPointer());
+                sprintf(newname, "%s%s", mountname, label);
 
                 auto ffrc = f_setlabel(newname);
                 return result::CreateFromFRESULT(ffrc);
             }
 
-            Result OpenDriveFileSystem(u32 drive_idx, sf::Out<std::shared_ptr<IFileSystemInterface>> out_fs) {
-                R_UNLESS(impl::IsValidDriveIndex(drive_idx), ResultInvalidDriveIndex());
+            Result OpenDriveFileSystem(s32 drive_interface_id, sf::Out<std::shared_ptr<IFileSystemInterface>> out_fs) {
+                impl::DoUpdateDrives();
+                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveIndex());
 
-                std::shared_ptr<fs::fsa::IFileSystem> drv_fs = std::make_shared<DriveFileSystem>(drive_idx);
+                std::shared_ptr<fs::fsa::IFileSystem> drv_fs = std::make_shared<DriveFileSystem>(drive_interface_id);
                 out_fs.SetValue(std::make_shared<IFileSystemInterface>(std::move(drv_fs), false));
 
                 return ResultSuccess();
             }
 
             DEFINE_SERVICE_DISPATCH_TABLE {
-                MAKE_SERVICE_COMMAND_META(GetMountedDriveCount),
+                MAKE_SERVICE_COMMAND_META(ListMountedDrives),
                 MAKE_SERVICE_COMMAND_META(GetDriveFileSystemType),
                 MAKE_SERVICE_COMMAND_META(GetDriveLabel),
                 MAKE_SERVICE_COMMAND_META(SetDriveLabel),

@@ -8,12 +8,11 @@ namespace ams::mitm::fspusb {
     class DriveFileSystem : public fs::fsa::IFileSystem {
 
         private:
-            u32 idx;
             s32 usb_iface_id;
             char mount_name[0x10];
 
             void DoWithDrive(std::function<void(impl::DrivePointer&)> fn) {
-                impl::DoWithDrive(this->idx, fn);
+                impl::DoWithDrive(this->usb_iface_id, fn);
             }
 
             void DoWithDriveFATFS(std::function<void(FATFS*)> fn) {
@@ -22,8 +21,8 @@ namespace ams::mitm::fspusb {
                 });
             }
 
-            bool IsDriveOk() {
-                return impl::IsDriveOk(this->usb_iface_id);
+            bool IsDriveInterfaceIdValid() {
+                return impl::IsDriveInterfaceIdValid(this->usb_iface_id);
             }
 
             void NormalizePath(char *out_path, const char *input_path) {
@@ -105,15 +104,13 @@ namespace ams::mitm::fspusb {
             }
 
         public:
-            DriveFileSystem(u32 drive_idx) : idx(drive_idx) {
-                this->DoWithDrive([&](impl::DrivePointer &drive_ptr) {
-                    this->usb_iface_id = drive_ptr->GetInterfaceId();
-                });
-                impl::FormatDriveMountName(this->mount_name, this->idx);
+            DriveFileSystem(s32 drive_interface_id) : usb_iface_id(drive_interface_id) {
+                auto drive_mounted_idx = impl::GetDriveMountedIndex(drive_interface_id);
+                impl::FormatDriveMountName(this->mount_name, drive_mounted_idx);
             }
 
             virtual Result CreateFileImpl(const char *path, s64 size, int flags) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -132,7 +129,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result DeleteFileImpl(const char *path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -146,7 +143,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result CreateDirectoryImpl(const char *path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -160,7 +157,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result DeleteDirectoryImpl(const char *path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -174,7 +171,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result DeleteDirectoryRecursivelyImpl(const char *path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -186,7 +183,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result RenameFileImpl(const char *old_path, const char *new_path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 char ffoldpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffoldpath, old_path);
@@ -207,7 +204,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result GetEntryTypeImpl(fs::DirectoryEntryType *out, const char *path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -226,7 +223,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result OpenFileImpl(std::unique_ptr<fs::fsa::IFile> *out_file, const char *path, fs::OpenMode mode) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -256,7 +253,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result OpenDirectoryImpl(std::unique_ptr<fs::fsa::IDirectory> *out_dir, const char *path, fs::OpenDirectoryMode mode) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -275,12 +272,12 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result CommitImpl() override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 return ResultSuccess();
             }
 
             virtual ams::Result GetFreeSpaceSizeImpl(s64 *out, const char *path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 auto ffrc = this->GetFATFSSpace(out, false);
 
@@ -288,7 +285,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual ams::Result GetTotalSpaceSizeImpl(s64 *out, const char *path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 auto ffrc = this->GetFATFSSpace(out, true);
 
@@ -296,7 +293,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result CleanDirectoryRecursivelyImpl(const char *path) {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 char ffpath[FS_MAX_PATH] = {0};
                 this->NormalizePath(ffpath, path);
@@ -308,7 +305,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result GetFileTimeStampRawImpl(fs::FileTimeStampRaw *out, const char *path) {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 
                 FILINFO finfo = {};
                 
@@ -344,7 +341,7 @@ namespace ams::mitm::fspusb {
             }
 
             virtual Result QueryEntryImpl(char *dst, size_t dst_size, const char *src, size_t src_size, fs::fsa::QueryId query, const char *path) override final {
-                R_UNLESS(this->IsDriveOk(), ResultDriveUnavailable());
+                R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
                 /* TODO */
                 return fs::ResultNotImplemented();
             }

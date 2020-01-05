@@ -9,12 +9,19 @@
 
 namespace ams::mitm::fspusb::impl {
 
+    constexpr u32 InvalidMountedIndex = 0xFF;
+
     Result InitializeManager();
     void FinalizeManager();
+    void DoUpdateDrives();
     
-    u32 GetAcquiredDriveCount();
-    bool IsValidDriveIndex(u32 drive_idx);
-    bool IsDriveOk(s32 drive_interface_id);
-    void DoWithDrive(u32 drive_idx, std::function<void(DrivePointer&)> fn);
-    void DoWithDriveFATFS(u32 drive_idx, std::function<void(FATFS*)> fn);
+    bool FindAndMountAtIndex(u32 *out_mounted_idx);
+    void UnmountAtIndex(u32 mounted_idx);
+    size_t GetAcquiredDriveCount();
+    bool IsDriveInterfaceIdValid(s32 drive_interface_id);
+    u32 GetDriveMountedIndex(s32 drive_interface_id);
+    s32 GetDriveInterfaceId(u32 drive_idx);
+    void DoWithDrive(s32 drive_interface_id, std::function<void(DrivePointer&)> fn);
+    void DoWithDriveMountedIndex(u32 drive_mounted_idx, std::function<void(DrivePointer&)> fn);
+    void DoWithDriveFATFS(s32 drive_interface_id, std::function<void(FATFS*)> fn);
 }

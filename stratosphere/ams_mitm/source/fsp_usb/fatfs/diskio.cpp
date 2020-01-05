@@ -17,10 +17,10 @@
 
 namespace {
 
-	u8 GetDriveStatus(u32 drv_idx) {
+	u8 GetDriveStatus(u32 mounted_idx) {
 		u8 status = STA_NOINIT;
 
-		ams::mitm::fspusb::impl::DoWithDrive(drv_idx, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
+		ams::mitm::fspusb::impl::DoWithDriveMountedIndex(mounted_idx, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
 			if(drive_ptr->IsSCSIOk()) {
 				status = 0;
 			}
@@ -70,7 +70,7 @@ extern "C" DRESULT disk_read (
 {
 	auto res = RES_PARERR;
 
-	ams::mitm::fspusb::impl::DoWithDrive((u32)pdrv, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
+	ams::mitm::fspusb::impl::DoWithDriveMountedIndex((u32)pdrv, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
 		res = drive_ptr->DoReadSectors(buff, sector, count);
 	});
 
@@ -94,7 +94,7 @@ extern "C" DRESULT disk_write (
 {
 	auto res = RES_PARERR;
 
-	ams::mitm::fspusb::impl::DoWithDrive((u32)pdrv, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
+	ams::mitm::fspusb::impl::DoWithDriveMountedIndex((u32)pdrv, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
 		res = drive_ptr->DoWriteSectors(buff, sector, count);
 	});
 	
