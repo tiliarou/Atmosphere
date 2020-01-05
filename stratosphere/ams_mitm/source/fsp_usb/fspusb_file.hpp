@@ -5,9 +5,8 @@
 namespace ams::mitm::fspusb {
 
     class DriveFile : public fs::fsa::IFile {
-
         private:
-            s32 usb_iface_id;
+            s32 usb_iface_id; 
             FIL file;
 
             bool IsDriveInterfaceIdValid() {
@@ -25,11 +24,11 @@ namespace ams::mitm::fspusb {
                 R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 auto ffrc = f_lseek(&this->file, (u64)offset);
-                if(ffrc == FR_OK) {
+                if (ffrc == FR_OK) {
                     UINT btr = (UINT)size;
                     UINT br = 0;
                     ffrc = f_read(&this->file, buffer, btr, &br);
-                    if(ffrc == FR_OK) {
+                    if (ffrc == FR_OK) {
                         *out = (size_t)br;
                     }
                 }
@@ -54,7 +53,7 @@ namespace ams::mitm::fspusb {
                 R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
                 auto ffrc = f_lseek(&this->file, (u64)offset);
-                if(ffrc == FR_OK) {
+                if (ffrc == FR_OK) {
                     UINT btw = (UINT)size;
                     UINT bw = 0;
                     ffrc = f_write(&this->file, buffer, btw, &bw);
@@ -74,8 +73,8 @@ namespace ams::mitm::fspusb {
 
                 /* f_lseek takes care of expanding the file if new_size > cur_size */
                 /* However, if new_size < cur_size, we must also call f_truncate */
-                if(ffrc == FR_OK) {
-                    if(new_size < cur_size) {
+                if (ffrc == FR_OK) {
+                    if (new_size < cur_size) {
                         ffrc = f_truncate(&this->file);
                     }
                 }

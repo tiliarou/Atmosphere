@@ -24,4 +24,5 @@ namespace ams::mitm::fspusb::impl {
     void DoWithDrive(s32 drive_interface_id, std::function<void(DrivePointer&)> fn);
     void DoWithDriveMountedIndex(u32 drive_mounted_idx, std::function<void(DrivePointer&)> fn);
     void DoWithDriveFATFS(s32 drive_interface_id, std::function<void(FATFS*)> fn);
+    
 }

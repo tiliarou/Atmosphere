@@ -5,7 +5,6 @@
 namespace ams::mitm::fspusb {
 
     class DriveDirectory : public fs::fsa::IDirectory {
-
         private:
             s32 usb_iface_id;
             DIR directory;
@@ -29,17 +28,18 @@ namespace ams::mitm::fspusb {
                 FILINFO info = {};
                 s64 count = 0;
                 while(true) {
-                    if(count >= max_entries) {
+                    if (count >= max_entries) {
                         break;
                     }
                     ffrc = f_readdir(&this->directory, &info);
-                    if((ffrc != FR_OK) || (info.fname[0] == '\0')) {
+                    if ((ffrc != FR_OK) || (info.fname[0] == '\0')) {
                         break;
                     }
                     memset(&entry, 0, sizeof(fs::DirectoryEntry));
                     strcpy(entry.name, info.fname);
+
                     /* Fill in the DirectoryEntry struct, then copy back to the buffer */
-                    if(info.fattrib & AM_DIR) {
+                    if (info.fattrib & AM_DIR) {
                         entry.type = FsDirEntryType_Dir;
                     }
                     else {
@@ -62,7 +62,7 @@ namespace ams::mitm::fspusb {
                 FILINFO info = {};
                 while(true) {
                     ffrc = f_readdir(&this->directory, &info);
-                    if((ffrc != FR_OK) || (info.fname[0] == '\0')) {
+                    if ((ffrc != FR_OK) || (info.fname[0] == '\0')) {
                         break;
                     }
                     count++;

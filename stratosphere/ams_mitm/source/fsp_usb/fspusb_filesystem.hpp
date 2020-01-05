@@ -6,7 +6,6 @@
 namespace ams::mitm::fspusb {
 
     class DriveFileSystem : public fs::fsa::IFileSystem {
-
         private:
             s32 usb_iface_id;
             char mount_name[0x10];
@@ -30,7 +29,7 @@ namespace ams::mitm::fspusb {
                 sprintf(out_path, "%s%s", this->mount_name, input_path);
             }
 
-            FRESULT DeleteFATFSDirRecursively(const char *path, bool delete_parent_dir) {
+            FRESULT DeleteDirectoryRecursivelyImpl(const char *path, bool delete_parent_dir) {
                 DIR dir = {};
                 FILINFO info = {};
                 auto ffrc = FR_OK;
@@ -40,20 +39,20 @@ namespace ams::mitm::fspusb {
                     ffrc = f_opendir(&dir, path);
                 });
                 
-                if(ffrc == FR_OK) {
+                if (ffrc == FR_OK) {
                     while(true) {
                         this->DoWithDriveFATFS([&](FATFS *fatfs) {
                             ffrc = f_readdir(&dir, &info);
                         });
                         
-                        if(ffrc != FR_OK || info.fname[0] == '\0') {
+                        if (ffrc != FR_OK || info.fname[0] == '\0') {
                             break;
                         }
                         
                         sprintf(ffpath, "%s/%s", path, info.fname);
                         
-                        if(info.fattrib & AM_DIR) {
-                            ffrc = DeleteFATFSDirRecursively(ffpath, true);
+                        if (info.fattrib & AM_DIR) {
+                            ffrc = DeleteDirectoryRecursivelyImpl(ffpath, true);
                         }
                         else {
                             this->DoWithDriveFATFS([&](FATFS *fatfs) {
@@ -67,7 +66,7 @@ namespace ams::mitm::fspusb {
                     this->DoWithDriveFATFS([&](FATFS *fatfs) {
                         f_closedir(&dir);
                         
-                        if(ffrc == FR_OK && delete_parent_dir) {
+                        if (ffrc == FR_OK && delete_parent_dir) {
                             ffrc = f_rmdir(path);
                         }
                     });
@@ -76,7 +75,7 @@ namespace ams::mitm::fspusb {
                 return ffrc;
             }
 
-            FRESULT GetFATFSSpace(s64 *out, bool total_space) {
+            FRESULT GetSpaceImpl(s64 *out, bool total_space) {
                 u32 block_size = 0;
                 auto ffrc = FR_OK;
                 FATFS *fs = nullptr;
@@ -90,11 +89,12 @@ namespace ams::mitm::fspusb {
                     ffrc = f_getfree(this->mount_name, &clstrs, &fs);
                 });
                 
-                if(ffrc == FR_OK && fs) {
-                    if(total_space) {
+                if (ffrc == FR_OK && fs) {
+                    if (total_space) {
                         /* Calculate total space */
                         *out = ((s64)((fs->n_fatent - 2) * fs->csize) * (s64)block_size);
-                    } else {
+                    }
+                    else {
                         /* Calculate free space */
                         *out = ((s64)(clstrs * fs->csize) * (s64)block_size);
                     }
@@ -119,7 +119,7 @@ namespace ams::mitm::fspusb {
                 this->DoWithDriveFATFS([&](FATFS *fatfs) {
                     FIL fp = {};
                     ffrc = f_open(&fp, ffpath, FA_CREATE_NEW | FA_WRITE);
-                    if(ffrc == FR_OK) {
+                    if (ffrc == FR_OK) {
                         f_lseek(&fp, (u64)size);
                         f_close(&fp);
                     }
@@ -177,7 +177,7 @@ namespace ams::mitm::fspusb {
                 this->NormalizePath(ffpath, path);
 
                 /* Remove directory contents and the directory itself */
-                auto ffrc = this->DeleteFATFSDirRecursively(ffpath, true);
+                auto ffrc = this->DeleteDirectoryRecursivelyImpl(ffpath, true);
 
                 return result::CreateFromFRESULT(ffrc);
             }
@@ -215,7 +215,7 @@ namespace ams::mitm::fspusb {
                     ffrc = f_stat(ffpath, &finfo);
                 });
 
-                if(ffrc == FR_OK) {
+                if (ffrc == FR_OK) {
                     *out = ((finfo.fattrib & AM_DIR) ? fs::DirectoryEntryType_Directory : fs::DirectoryEntryType_File);
                 }
 
@@ -229,13 +229,13 @@ namespace ams::mitm::fspusb {
                 this->NormalizePath(ffpath, path);
 
                 BYTE openmode = FA_OPEN_EXISTING;
-                if(mode & ams::fs::OpenMode_Read) {
+                if (mode & fs::OpenMode_Read) {
                     openmode |= FA_READ;
                 }
-                if(mode & ams::fs::OpenMode_Write) {
+                if (mode & fs::OpenMode_Write) {
                     openmode |= FA_WRITE;
                 }
-                if(mode & ams::fs::OpenMode_Append) {
+                if (mode & fs::OpenMode_Append) {
                     openmode |= FA_OPEN_APPEND;
                 }
 
@@ -245,7 +245,7 @@ namespace ams::mitm::fspusb {
                     ffrc = f_open(&fil, ffpath, openmode);
                 });
 
-                if(ffrc == FR_OK) {
+                if (ffrc == FR_OK) {
                     *out_file = std::make_unique<DriveFile>(this->usb_iface_id, fil);
                 }
 
@@ -264,7 +264,7 @@ namespace ams::mitm::fspusb {
                     ffrc = f_opendir(&dir, ffpath);
                 });
 
-                if(ffrc == FR_OK) {
+                if (ffrc == FR_OK) {
                     *out_dir = std::make_unique<DriveDirectory>(this->usb_iface_id, dir);
                 }
 
@@ -279,7 +279,7 @@ namespace ams::mitm::fspusb {
             virtual ams::Result GetFreeSpaceSizeImpl(s64 *out, const char *path) override final {
                 R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
-                auto ffrc = this->GetFATFSSpace(out, false);
+                auto ffrc = this->GetSpaceImpl(out, false);
 
                 return result::CreateFromFRESULT(ffrc);
             }
@@ -287,7 +287,7 @@ namespace ams::mitm::fspusb {
             virtual ams::Result GetTotalSpaceSizeImpl(s64 *out, const char *path) override final {
                 R_UNLESS(this->IsDriveInterfaceIdValid(), ResultDriveUnavailable());
 
-                auto ffrc = this->GetFATFSSpace(out, true);
+                auto ffrc = this->GetSpaceImpl(out, true);
 
                 return result::CreateFromFRESULT(ffrc);
             }
@@ -299,7 +299,7 @@ namespace ams::mitm::fspusb {
                 this->NormalizePath(ffpath, path);
 
                 /* Remove just the directory contents */
-                auto ffrc = this->DeleteFATFSDirRecursively(ffpath, false);
+                auto ffrc = this->DeleteDirectoryRecursivelyImpl(ffpath, false);
 
                 return result::CreateFromFRESULT(ffrc);
             }
@@ -317,7 +317,7 @@ namespace ams::mitm::fspusb {
                     ffrc = f_stat(ffpath, &finfo);
                 });
 
-                if(ffrc == FR_OK) {
+                if (ffrc == FR_OK) {
                     memset(out, 0, sizeof(fs::FileTimeStampRaw));
                     
                     struct tm timeinfo;

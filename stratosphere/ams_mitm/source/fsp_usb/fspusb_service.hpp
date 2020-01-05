@@ -25,7 +25,7 @@ namespace ams::mitm::fspusb {
                 size_t drive_count = impl::GetAcquiredDriveCount();
                 size_t buf_drive_count = std::min(drive_count, out_interface_ids.GetSize());
 
-                for(u32 i = 0; i < buf_drive_count; i++) {
+                for (u32 i = 0; i < buf_drive_count; i++) {
                     out_interface_ids[i] = impl::GetDriveInterfaceId(i);
                 }
 

@@ -23,7 +23,7 @@ namespace ams::mitm::fspusb {
 
         constexpr sm::ServiceName ServiceName = sm::ServiceName::Encode("fsp-usb");
 
-        /* Same options as fsp-srv, this is a service with similar behaviour */
+        /* Same options as fsp-srv, since this is a service with similar behaviour */
 
         struct ServerOptions {
             static constexpr size_t PointerBufferSize = 0x800;

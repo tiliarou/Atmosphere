@@ -62,17 +62,22 @@ namespace ams::mitm::fspusb::impl {
         Out
     };
 
-    class SCSIBuffer {
+    struct SCSICommandStatus {
+        u32 signature;
+        u32 tag;
+        u32 data_residue;
+        u8 status;
+    };
 
+    class SCSIBuffer {
         public:
             static constexpr size_t BufferSize = SCSI_CBW_SIZE;
-
         private:
             u32 idx = 0;
             u8 storage[BufferSize];
-
         public:
             SCSIBuffer();
+
             void Write8(u8 val);
             void WritePadding(u32 len);
             void Write16BE(u16 val);
@@ -82,7 +87,6 @@ namespace ams::mitm::fspusb::impl {
     };
 
     class SCSICommand {
-
         private:
             u32 tag;
             u32 data_transfer_length;
@@ -90,9 +94,9 @@ namespace ams::mitm::fspusb::impl {
             u8 lun;
             u8 cb_length;
             SCSIDirection direction;
-
         public:
             SCSICommand(u32 data_tr_len, SCSIDirection dir, u8 ln, u8 cb_len);
+
             virtual SCSIBuffer ProduceBuffer() = 0;
             u32 GetDataTransferLength();
             SCSIDirection GetDirection();
@@ -101,12 +105,11 @@ namespace ams::mitm::fspusb::impl {
     };
 
     class SCSITestUnitReadyCommand : public SCSICommand {
-
         private:
             u8 opcode;
-            
         public:
             SCSITestUnitReadyCommand();
+
             virtual SCSIBuffer ProduceBuffer();
     };
     
@@ -114,9 +117,9 @@ namespace ams::mitm::fspusb::impl {
         private:
             u8 allocation_length;
             u8 opcode;
-
         public:
             SCSIRequestSenseCommand(u8 alloc_len);
+
             virtual SCSIBuffer ProduceBuffer();
     };
 
@@ -127,56 +130,45 @@ namespace ams::mitm::fspusb::impl {
 
         public:
             SCSIInquiryCommand(u8 alloc_len);
+
             virtual SCSIBuffer ProduceBuffer();
     };
 
     class SCSIReadCapacityCommand : public SCSICommand {
-
         private:
             u8 opcode;
-            
         public:
             SCSIReadCapacityCommand();
+
             virtual SCSIBuffer ProduceBuffer();
     };
 
 
     class SCSIRead10Command : public SCSICommand {
-
         private:
             u8 opcode;
             u32 block_address;
             u16 transfer_blocks;
-            
         public:
             SCSIRead10Command(u32 block_addr, u32 block_sz, u16 xfer_blocks);
+
             virtual SCSIBuffer ProduceBuffer();
     };
 
     class SCSIWrite10Command : public SCSICommand {
-
         private:
             u8 opcode;
             u32 block_address;
             u16 transfer_blocks;
-            
         public:
             SCSIWrite10Command(u32 block_addr, u32 block_sz, u16 xfer_blocks);
+
             virtual SCSIBuffer ProduceBuffer();
     };
 
-    struct SCSICommandStatus {
-        u32 signature;
-        u32 tag;
-        u32 data_residue;
-        u8 status;
-    };
-
     class SCSIDevice {
-
         public:
             static constexpr size_t BufferSize = 0x1000; 
-
         private:
             u8 *buf_a;
             u8 *buf_b;
@@ -185,10 +177,10 @@ namespace ams::mitm::fspusb::impl {
             UsbHsClientEpSession *in_endpoint;
             UsbHsClientEpSession *out_endpoint;
             bool ok;
-        
         public:
             SCSIDevice(UsbHsClientIfSession *iface, UsbHsClientEpSession *in_ep, UsbHsClientEpSession *out_ep);
             ~SCSIDevice();
+
             void AllocateBuffers();
             void FreeBuffers();
             SCSICommandStatus ReadStatus();
@@ -201,15 +193,14 @@ namespace ams::mitm::fspusb::impl {
     };
 
     class SCSIBlock {
-        
         private:
             u64 capacity;
             u32 block_size;
             SCSIDevice *device;
             bool ok;
-
         public:
             SCSIBlock(SCSIDevice *dev);
+
             int ReadSectors(u8 *buffer, u32 sector_offset, u32 num_sectors);
             int WriteSectors(const u8 *buffer, u32 sector_offset, u32 num_sectors);
 
@@ -218,7 +209,7 @@ namespace ams::mitm::fspusb::impl {
             }
 
             bool Ok() {
-                if(this->device == nullptr) {
+                if (this->device == nullptr) {
                     return false;
                 }
                 return this->ok && this->device->Ok();
@@ -226,11 +217,9 @@ namespace ams::mitm::fspusb::impl {
     };
 
     class SCSIDriveContext {
-
         private:
             SCSIDevice *device;
             SCSIBlock *block;
-
         public:
             SCSIDriveContext(UsbHsClientIfSession *interface, UsbHsClientEpSession *in_ep, UsbHsClientEpSession *out_ep) : device(nullptr), block(nullptr) {
                 this->device = new SCSIDevice(interface, in_ep, out_ep);
@@ -238,11 +227,11 @@ namespace ams::mitm::fspusb::impl {
             }
 
             ~SCSIDriveContext() {
-                if(this->block != nullptr) {
+                if (this->block != nullptr) {
                     delete this->block;
                     this->block = nullptr;
                 }
-                if(this->device != nullptr) {
+                if (this->device != nullptr) {
                     delete this->device;
                     this->device = nullptr;
                 }

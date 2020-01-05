@@ -8,13 +8,13 @@ namespace ams::mitm::fspusb::impl {
     }
 
     Result Drive::Mount() {
-        if(!this->mounted) {
-            if(!this->scsi_context->Ok()) {
+        if (!this->mounted) {
+            if (!this->scsi_context->Ok()) {
                 return fspusb::ResultDriveInitializationFailure().GetValue();
             }
 
             /* Try to find a mountable index */
-            if(FindAndMountAtIndex(&this->mounted_idx)) {
+            if (FindAndMountAtIndex(&this->mounted_idx)) {
                 FormatDriveMountName(this->mount_name, this->mounted_idx);
                 auto ffrc = f_mount(&this->fat_fs, this->mount_name, 1);
                 
@@ -26,7 +26,7 @@ namespace ams::mitm::fspusb::impl {
     }
 
     void Drive::Unmount() {
-        if(this->mounted) {
+        if (this->mounted) {
             UnmountAtIndex(this->mounted_idx);
             f_mount(nullptr, this->mount_name, 1);
             memset(&this->fat_fs, 0, sizeof(this->fat_fs));
@@ -36,7 +36,7 @@ namespace ams::mitm::fspusb::impl {
     }
 
     void Drive::Dispose() {
-        if(this->scsi_context != nullptr) {
+        if (this->scsi_context != nullptr) {
             delete this->scsi_context;
             this->scsi_context = nullptr;
         }

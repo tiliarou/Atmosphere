@@ -4,9 +4,9 @@
 
 namespace ams::mitm::fspusb::impl {
 
-    inline void FormatDriveMountName(char *str, u32 drive_idx) {
+    inline void FormatDriveMountName(char *str, u32 drive_mounted_idx) {
         std::memset(str, 0, strlen(str));
-        sprintf(str, "%d:", drive_idx);
+        sprintf(str, "%d:", drive_mounted_idx);
     }
 
 }

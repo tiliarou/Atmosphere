@@ -7,13 +7,13 @@
 /* storage control modules to the FatFs module with a defined API.       */
 /*-----------------------------------------------------------------------*/
 
-#include <stdio.h>
+#include <stdio.h>	
 #include <string.h>
 #include "ff.h"
 #include "diskio.h"
 #include "../impl/fspusb_usb_manager.hpp"
 
-/* Reference for needed FatFS impl functions: http://irtos.sourceforge.net/FAT32_ChaN/doc/en/appnote.html#port */
+/* Reference for needed FATFS impl functions: http://irtos.sourceforge.net/FAT32_ChaN/doc/en/appnote.html#port */
 
 namespace {
 
@@ -21,7 +21,7 @@ namespace {
 		u8 status = STA_NOINIT;
 
 		ams::mitm::fspusb::impl::DoWithDriveMountedIndex(mounted_idx, [&](ams::mitm::fspusb::impl::DrivePointer &drive_ptr) {
-			if(drive_ptr->IsSCSIOk()) {
+			if (drive_ptr->IsSCSIOk()) {
 				status = 0;
 			}
 		});

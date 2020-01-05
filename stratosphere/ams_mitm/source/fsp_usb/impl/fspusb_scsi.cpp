@@ -177,25 +177,25 @@ namespace ams::mitm::fspusb::impl {
     }
 
     void SCSIDevice::AllocateBuffers() {
-        if(this->buf_a == nullptr) {
+        if (this->buf_a == nullptr) {
             this->buf_a = new (std::align_val_t(0x1000)) u8[BufferSize]();
         }
-        if(this->buf_b == nullptr) {
+        if (this->buf_b == nullptr) {
             this->buf_b = new (std::align_val_t(0x1000)) u8[BufferSize]();
         }
-        if(this->buf_c == nullptr) {
+        if (this->buf_c == nullptr) {
             this->buf_c = new (std::align_val_t(0x1000)) u8[BufferSize]();
         }
     }
 
     void SCSIDevice::FreeBuffers() {
-        if(this->buf_a != nullptr) {
+        if (this->buf_a != nullptr) {
             operator delete[](this->buf_a, std::align_val_t(0x1000));
         }
-        if(this->buf_b != nullptr) {
+        if (this->buf_b != nullptr) {
             operator delete[](this->buf_b, std::align_val_t(0x1000));
         }
-        if(this->buf_c != nullptr) {
+        if (this->buf_c != nullptr) {
             operator delete[](this->buf_c, std::align_val_t(0x1000));
         }
     }
@@ -204,9 +204,9 @@ namespace ams::mitm::fspusb::impl {
         u32 out_len;
         SCSICommandStatus status = {};
 
-        if(this->ok) {
+        if (this->ok) {
             auto rc = usbHsEpPostBuffer(this->out_endpoint, this->buf_c, 0x10, &out_len);
-            if(R_SUCCEEDED(rc)) {
+            if (R_SUCCEEDED(rc)) {
                 std::memcpy(&status, this->buf_c, sizeof(status));
             }
             else {
@@ -218,7 +218,7 @@ namespace ams::mitm::fspusb::impl {
     }
 
     void SCSIDevice::PushCommand(SCSICommand &cmd) {
-        if(this->ok) {
+        if (this->ok) {
             std::memset(this->buf_a, 0, BufferSize);
             cmd.ToBytes(this->buf_a);
 
@@ -229,28 +229,28 @@ namespace ams::mitm::fspusb::impl {
     }
 
     SCSICommandStatus SCSIDevice::TransferCommand(SCSICommand &c, u8 *buffer) {
-        if(this->ok) {
+        if (this->ok) {
             this->PushCommand(c);
             u32 transfer_length = c.GetDataTransferLength();
             u32 transferred = 0;
             u32 total_transferred = 0;
             u32 block_size = (u32)BufferSize;
             
-            if(this->ok && buffer != nullptr && transfer_length > 0) {
-                if(c.GetDirection() == SCSIDirection::In) {
+            if (this->ok && buffer != nullptr && transfer_length > 0) {
+                if (c.GetDirection() == SCSIDirection::In) {
                     while(total_transferred < transfer_length) {
                         u32 cur_transfer_size = ((transfer_length - total_transferred) > block_size ? block_size : (transfer_length - total_transferred));
                         
                         auto rc = usbHsEpPostBuffer(this->out_endpoint, this->buf_b, cur_transfer_size, &transferred);
-                        if(R_FAILED(rc) || !transferred) {
+                        if (R_FAILED(rc) || !transferred) {
                             this->ok = false;
                             break;
                         }
                         
-                        if(transferred == SCSI_CSW_SIZE) {
+                        if (transferred == SCSI_CSW_SIZE) {
                             SCSICommandStatus status = {};
                             std::memcpy(&status, this->buf_b, sizeof(status));
-                            if(status.signature == SCSI_CSW_SIGNATURE && status.tag == SCSI_TAG) {
+                            if (status.signature == SCSI_CSW_SIGNATURE && status.tag == SCSI_TAG) {
                                 /* We weren't expecting a CSW, but we got one anyway */
                                 return status;
                             }
@@ -294,11 +294,11 @@ namespace ams::mitm::fspusb::impl {
         //status = this->device->TransferCommand(inquiry, inquiry_response);
         
         status = this->device->TransferCommand(test_unit_ready, nullptr);
-        if(status.status != SCSI_CMD_STATUS_SUCCESS) {
+        if (status.status != SCSI_CMD_STATUS_SUCCESS) {
             /* Manually set back to true, just in case */
             this->ok = true; 
             SCSICommandStatus rs_status = this->device->TransferCommand(request_sense, request_sense_response);
-            if(rs_status.status == SCSI_CMD_STATUS_SUCCESS) {
+            if (rs_status.status == SCSI_CMD_STATUS_SUCCESS) {
                 switch(request_sense_response[2] & 0x0F) {
                     case SCSI_SENSE_NO_SENSE:
                     case SCSI_SENSE_RECOVERED_ERROR:
@@ -338,7 +338,7 @@ namespace ams::mitm::fspusb::impl {
             }*/
         }
         
-        if(this->ok && status.status == SCSI_CMD_STATUS_SUCCESS) {
+        if (this->ok && status.status == SCSI_CMD_STATUS_SUCCESS) {
             u8 read_capacity_response[8] = {0};
             u32 size_lba;
             u32 lba_bytes;
@@ -354,14 +354,14 @@ namespace ams::mitm::fspusb::impl {
             this->capacity = (u64)(size_lba * lba_bytes);
             this->block_size = lba_bytes;
             
-            if(!this->capacity || !this->block_size) {
+            if (!this->capacity || !this->block_size) {
                 this->ok = false;
             }
         }
     }
 
     int SCSIBlock::ReadSectors(u8 *buffer, u32 sector_offset, u32 num_sectors) {
-        if(!this->Ok()) {
+        if (!this->Ok()) {
             return 0;
         }
         SCSIRead10Command read_ten(sector_offset, this->block_size, num_sectors);
@@ -370,7 +370,7 @@ namespace ams::mitm::fspusb::impl {
     }
 
     int SCSIBlock::WriteSectors(const u8 *buffer, u32 sector_offset, u32 num_sectors) {
-        if(!this->Ok()) {
+        if (!this->Ok()) {
             return 0;
         }
         SCSIWrite10Command write_ten(sector_offset, this->block_size, num_sectors);
