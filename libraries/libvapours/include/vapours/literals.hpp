@@ -14,18 +14,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <stratosphere.hpp>
+#include "defines.hpp"
 
-namespace ams::mitm::bpc {
+namespace ams { inline namespace literals {
 
-    /* Power utilities. */
-    bool IsRebootManaged();
-    void RebootSystem();
-    void ShutdownSystem();
+    constexpr ALWAYS_INLINE size_t operator ""_KB(unsigned long long n) {
+        return static_cast<size_t>(n) * size_t(1024);
+    }
 
-    /* Atmosphere power utilities. */
-    Result LoadRebootPayload();
-    Result DetectPreferredRebootFunctionality();
-    void RebootForFatalError(const ams::FatalErrorContext *ctx);
+    constexpr ALWAYS_INLINE size_t operator ""_MB(unsigned long long n) {
+        return operator ""_KB(n) * size_t(1024);
+    }
 
-}
+    constexpr ALWAYS_INLINE size_t operator ""_GB(unsigned long long n) {
+        return operator ""_MB(n) * size_t(1024);
+    }
+
+} }
