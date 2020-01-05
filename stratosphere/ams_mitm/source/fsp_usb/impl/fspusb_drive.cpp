@@ -3,7 +3,7 @@
 
 namespace ams::mitm::fspusb::impl {
 
-    Drive::Drive(UsbHsClientIfSession interface, UsbHsClientEpSession in_ep, UsbHsClientEpSession out_ep) : usb_interface(interface), usb_in_endpoint(in_ep), usb_out_endpoint(out_ep), scsi_context(nullptr), mounted_idx(0xFF), mounted(false) {
+    Drive::Drive(UsbHsClientIfSession interface, UsbHsClientEpSession in_ep, UsbHsClientEpSession out_ep) : usb_interface(interface), usb_in_endpoint(in_ep), usb_out_endpoint(out_ep), mounted_idx(0xFF), scsi_context(nullptr), mounted(false) {
         this->scsi_context = new SCSIDriveContext(&this->usb_interface, &this->usb_in_endpoint, &this->usb_out_endpoint);
     }
 

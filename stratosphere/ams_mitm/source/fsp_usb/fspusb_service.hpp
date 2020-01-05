@@ -34,7 +34,7 @@ namespace ams::mitm::fspusb {
 
             Result GetDriveFileSystemType(s32 drive_interface_id, sf::Out<u8> out_fs_type) {
                 impl::DoUpdateDrives();
-                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveIndex());
+                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveInterfaceId());
 
                 impl::DoWithDriveFATFS(drive_interface_id, [&](FATFS *fs) {
                     out_fs_type.SetValue(fs->fs_type);
@@ -45,7 +45,7 @@ namespace ams::mitm::fspusb {
 
             Result GetDriveLabel(s32 drive_interface_id, sf::OutBuffer &out_label_str) {
                 impl::DoUpdateDrives();
-                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveIndex());
+                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveInterfaceId());
 
                 auto drive_mounted_idx = impl::GetDriveMountedIndex(drive_interface_id);
                 char mountname[0x10] = {0};
@@ -57,7 +57,7 @@ namespace ams::mitm::fspusb {
 
             Result SetDriveLabel(s32 drive_interface_id, sf::InBuffer &label_str) {
                 impl::DoUpdateDrives();
-                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveIndex());
+                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveInterfaceId());
 
                 auto drive_mounted_idx = impl::GetDriveMountedIndex(drive_interface_id);
                 char mountname[0x10] = {0};
@@ -76,7 +76,7 @@ namespace ams::mitm::fspusb {
 
             Result OpenDriveFileSystem(s32 drive_interface_id, sf::Out<std::shared_ptr<IFileSystemInterface>> out_fs) {
                 impl::DoUpdateDrives();
-                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveIndex());
+                R_UNLESS(impl::IsDriveInterfaceIdValid(drive_interface_id), ResultInvalidDriveInterfaceId());
 
                 std::shared_ptr<fs::fsa::IFileSystem> drv_fs = std::make_shared<DriveFileSystem>(drive_interface_id);
                 out_fs.SetValue(std::make_shared<IFileSystemInterface>(std::move(drv_fs), false));

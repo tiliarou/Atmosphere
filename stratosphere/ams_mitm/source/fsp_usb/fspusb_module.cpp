@@ -38,14 +38,12 @@ namespace ams::mitm::fspusb {
     }
 
     void MitmModule::ThreadFunction(void *arg) {
-        /* Wait for services to be accessible */
-        svcSleepThread(20'000'000'000L);
+        /* Wait until initialization is complete. */
+        mitm::WaitInitialized();
         
         sm::DoWithSession([&]() {
             R_ASSERT(impl::InitializeManager());
             R_ASSERT(timeInitialize());
-
-            R_ASSERT(fsdevMountSdmc());
         });
 
         R_ASSERT(g_server_manager.RegisterServer<Service>(ServiceName, MaxSessions));
