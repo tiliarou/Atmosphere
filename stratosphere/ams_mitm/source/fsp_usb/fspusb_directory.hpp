@@ -35,7 +35,7 @@ namespace ams::mitm::fspusb {
                     if ((ffrc != FR_OK) || (info.fname[0] == '\0')) {
                         break;
                     }
-                    memset(&entry, 0, sizeof(fs::DirectoryEntry));
+                    std::memset(&entry, 0, sizeof(fs::DirectoryEntry));
                     strcpy(entry.name, info.fname);
 
                     /* Fill in the DirectoryEntry struct, then copy back to the buffer */
@@ -46,7 +46,7 @@ namespace ams::mitm::fspusb {
                         entry.type = FsDirEntryType_File;
                         entry.file_size = info.fsize;
                     }
-                    memcpy(&out_entries[count], &entry, sizeof(entry));
+                    std::memcpy(&out_entries[count], &entry, sizeof(entry));
                     count++;
                 }
                 *out_count = count;

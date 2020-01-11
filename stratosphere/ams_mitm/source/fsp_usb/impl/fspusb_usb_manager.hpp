@@ -1,6 +1,7 @@
 
 #pragma once
 #include "fspusb_drive.hpp"
+#include "fspusb_request.hpp"
 #include <functional>
 
 #define USB_CLASS_MASS_STORAGE      0x08
@@ -8,8 +9,6 @@
 #define MASS_STORAGE_BULK_ONLY      0x50
 
 namespace ams::mitm::fspusb::impl {
-
-    constexpr u32 InvalidMountedIndex = 0xFF;
 
     Result InitializeManager();
     void FinalizeManager();

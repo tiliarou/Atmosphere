@@ -12,11 +12,14 @@ namespace ams::mitm::fspusb::impl {
     /* Maximum amount of drives, basically FATFS's volume number */
     constexpr u32 DriveMax = FF_VOLUMES;
 
+    /* Used for drive mounting as an invalid index (since 0 is a valid one) */
+    constexpr u32 InvalidMountedIndex = 0xFF;
+
     class Drive {
             NON_COPYABLE(Drive);
             NON_MOVEABLE(Drive);
         private:
-            os::Mutex fs_lock;
+            ams::os::Mutex fs_lock;
             UsbHsClientIfSession usb_interface;
             UsbHsClientEpSession usb_in_endpoint;
             UsbHsClientEpSession usb_out_endpoint;
@@ -25,12 +28,12 @@ namespace ams::mitm::fspusb::impl {
             char mount_name[0x10];
             SCSIDriveContext *scsi_context;
             bool mounted;
-        public:
-            Drive(UsbHsClientIfSession interface, UsbHsClientEpSession in_ep, UsbHsClientEpSession out_ep);
 
+        public:
+            Drive(UsbHsClientIfSession interface, UsbHsClientEpSession in_ep, UsbHsClientEpSession out_ep, u8 lun);
             Result Mount();
             void Unmount();
-            void Dispose();
+            void Dispose(bool close_usbhs);
 
             s32 GetInterfaceId() {
                 return this->usb_interface.ID;
@@ -59,7 +62,7 @@ namespace ams::mitm::fspusb::impl {
                 return false;
             }
 
-            DRESULT DoReadSectors(u8 *buffer, u32 sector_offset, u32 num_sectors) {
+            DRESULT DoReadSectors(u8 *buffer, u64 sector_offset, u32 num_sectors) {
                 if (this->scsi_context != nullptr) {
                     int res = this->scsi_context->GetBlock()->ReadSectors(buffer, sector_offset, num_sectors);
                     if (res != 0) {
@@ -69,7 +72,7 @@ namespace ams::mitm::fspusb::impl {
                 return RES_PARERR;
             }
 
-            DRESULT DoWriteSectors(const u8 *buffer, u32 sector_offset, u32 num_sectors) {
+            DRESULT DoWriteSectors(const u8 *buffer, u64 sector_offset, u32 num_sectors) {
                 if (this->scsi_context != nullptr) {
                     int res = this->scsi_context->GetBlock()->WriteSectors(buffer, sector_offset, num_sectors);
                     if (res != 0) {
@@ -89,6 +92,6 @@ namespace ams::mitm::fspusb::impl {
             }
     };
 
-    /* For convenience */
+    /* For convenience :P */
     using DrivePointer = std::unique_ptr<Drive>;
 }
