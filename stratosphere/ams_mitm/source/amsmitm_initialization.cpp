@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -17,6 +17,7 @@
 #include "amsmitm_initialization.hpp"
 #include "amsmitm_fs_utils.hpp"
 #include "bpc_mitm/bpc_ams_power_utils.hpp"
+#include "set_mitm/settings_sd_kvs.hpp"
 
 namespace ams::mitm {
 
@@ -211,7 +212,7 @@ namespace ams::mitm {
             CreateAutomaticBackups();
 
             /* Rename program folders in the titles directory. */
-            /* TODO: Remove this in Atmosphere 0.10.1. */
+            /* TODO: Remove this in Atmosphere 0.10.2. */
             RenameTitlesDirectoryProgramFoldersForCompatibility();
 
             /* If we're emummc, persist a write-handle to prevent other processes from touching the image. */
@@ -227,6 +228,12 @@ namespace ams::mitm {
             sm::DoWithSession([]() {
                 R_ASSERT(setsysInitialize());
             });
+
+            /* Load settings off the SD card. */
+            settings::fwdbg::InitializeSdCardKeyValueStore();
+
+            /* Ensure that we reboot using the user's preferred method. */
+            R_ASSERT(mitm::bpc::DetectPreferredRebootFunctionality());
 
             /* Signal to waiters that we are ready. */
             g_init_event.Signal();

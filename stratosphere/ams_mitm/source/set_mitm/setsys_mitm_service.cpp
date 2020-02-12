@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -60,7 +60,7 @@ namespace ams::mitm::settings {
                 #pragma GCC diagnostic ignored "-Wformat-truncation"
                 {
                     char display_version[sizeof(g_ams_firmware_version.display_version)];
-                    std::snprintf(display_version, sizeof(display_version), "%s|AMS %u.%u.%u|%c", g_ams_firmware_version.display_version, api_info.major_version, api_info.minor_version, api_info.micro_version, emummc_char);
+                    std::snprintf(display_version, sizeof(display_version), "%s|AMS %u.%u.%u|%c", g_ams_firmware_version.display_version, api_info.GetMajorVersion(), api_info.GetMinorVersion(), api_info.GetMicroVersion(), emummc_char);
                     std::memcpy(g_ams_firmware_version.display_version, display_version, sizeof(display_version));
                 }
                 #pragma GCC diagnostic pop

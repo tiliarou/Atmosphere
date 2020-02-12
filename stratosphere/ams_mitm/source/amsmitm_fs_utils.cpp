@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -154,7 +154,7 @@ namespace ams::mitm::fs {
         return fsFsOpenDirectory(fs, fixed_path, mode, out);
     }
 
-    /* TODO: Remove this in Atmosphere 0.10.1. */
+    /* TODO: Remove this in Atmosphere 0.10.2. */
     Result RenameProgramDirectoryForCompatibility(const char *dir_name) {
         R_TRY(EnsureSdInitialized());
         char titles_fixed_path[ams::fs::EntryNameLengthMax + 1];
@@ -211,6 +211,31 @@ namespace ams::mitm::fs {
         file_guard.Cancel();
         *out = f;
         return ResultSuccess();
+    }
+
+    Result CreateAndOpenAtmosphereSdFile(FsFile *out, ncm::ProgramId program_id, const char *path, size_t size) {
+        R_TRY(EnsureSdInitialized());
+
+        char fixed_path[ams::fs::EntryNameLengthMax + 1];
+        FormatAtmosphereSdPath(fixed_path, sizeof(fixed_path), program_id, path);
+
+        /* Unconditionally create. */
+        /* Don't check error, as a failure here should be okay. */
+        FsFile f;
+        fsFsCreateFile(&g_sd_filesystem, fixed_path, size, 0);
+
+        /* Try to open. */
+        R_TRY(fsFsOpenFile(&g_sd_filesystem, fixed_path, OpenMode_ReadWrite, &f));
+        auto file_guard = SCOPE_GUARD { fsFileClose(&f); };
+
+        /* Try to set the size. */
+        R_TRY(fsFileSetSize(&f, static_cast<s64>(size)));
+
+        /* Set output. */
+        file_guard.Cancel();
+        *out = f;
+        return ResultSuccess();
+
     }
 
 }

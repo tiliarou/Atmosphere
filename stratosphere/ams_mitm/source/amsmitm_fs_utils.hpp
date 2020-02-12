@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -38,11 +38,12 @@ namespace ams::mitm::fs {
     Result OpenAtmosphereSdRomfsDirectory(FsDir *out, ncm::ProgramId program_id, const char *path, u32 mode);
     Result OpenAtmosphereRomfsDirectory(FsDir *out, ncm::ProgramId program_id, const char *path, u32 mode, FsFileSystem *fs);
 
-    /* TODO: Remove this in Atmosphere 0.10.1. */
+    /* TODO: Remove this in Atmosphere 0.10.2. */
     Result RenameProgramDirectoryForCompatibility(const char *dir_name);
 
     bool HasSdRomfsContent(ncm::ProgramId program_id);
 
     Result SaveAtmosphereSdFile(FsFile *out, ncm::ProgramId program_id, const char *path, void *data, size_t size);
+    Result CreateAndOpenAtmosphereSdFile(FsFile *out, ncm::ProgramId program_id, const char *path, size_t size);
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -412,12 +412,12 @@ namespace ams::pm::impl {
                     }
                     break;
                 case ProcessState_Exited:
+                    /* Free process resources, unlink from waitable manager. */
+                    process_info->Cleanup();
+
                     if (hos::GetVersion() < hos::Version_500 && process_info->ShouldSignalOnExit()) {
                         g_process_event.Signal();
                     } else {
-                        /* Free process resources, unlink from waitable manager. */
-                        process_info->Cleanup();
-
                         /* Handle the case where we need to keep the process alive some time longer. */
                         if (hos::GetVersion() >= hos::Version_500 && process_info->ShouldSignalOnExit()) {
                             /* Remove from the living list. */
@@ -436,6 +436,7 @@ namespace ams::pm::impl {
                             CleanupProcessInfo(list, process_info);
                         }
                     }
+                    break;
                 case ProcessState_DebugSuspended:
                     if (process_info->ShouldSignalOnDebugEvent()) {
                         process_info->SetSuspended();

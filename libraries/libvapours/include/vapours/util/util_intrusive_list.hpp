@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -34,12 +34,9 @@ namespace ams::util {
             IntrusiveListNode *prev;
             IntrusiveListNode *next;
         public:
-            IntrusiveListNode() {
-                this->prev = this;
-                this->next = this;
-            }
+            constexpr IntrusiveListNode() : prev(this), next(this) { /* ... */ }
 
-            bool IsLinked() const {
+            constexpr bool IsLinked() const {
                 return this->next != this;
             }
         private:
@@ -68,9 +65,9 @@ namespace ams::util {
                 /* Splice a range into the list. */
                 auto last_prev = last->prev;
                 first->prev = this;
-                this->next = first;
                 last_prev->next = next;
                 this->next->prev = last_prev;
+                this->next = first;
             }
 
             void Unlink() {
@@ -102,6 +99,7 @@ namespace ams::util {
                 return this->next;
             }
     };
+    static_assert(std::is_literal_type<IntrusiveListNode>::value);
 
     namespace impl {
 
@@ -500,7 +498,7 @@ namespace ams::util {
             }
 
             void push_front(reference ref) {
-                this->impl.push_back(GetNode(ref));
+                this->impl.push_front(GetNode(ref));
             }
 
             void pop_back() {
@@ -557,12 +555,15 @@ namespace ams::util {
             }
 
             static constexpr Derived &GetParent(IntrusiveListNode &node) {
-                return static_cast<Derived &>(util::GetParentReference<Member>(&node));
+                return util::GetParentReference<Member, Derived>(&node);
             }
 
             static constexpr Derived const &GetParent(IntrusiveListNode const &node) {
-                return static_cast<const Derived &>(util::GetParentReference<Member>(&node));
+                return util::GetParentReference<Member, Derived>(&node);
             }
+        private:
+            static constexpr TYPED_STORAGE(Derived) DerivedStorage = {};
+            static_assert(std::addressof(GetParent(GetNode(GetReference(DerivedStorage)))) == GetPointer(DerivedStorage));
     };
 
     template<class Derived>

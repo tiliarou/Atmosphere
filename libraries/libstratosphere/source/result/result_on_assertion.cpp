@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,7 +23,7 @@ namespace ams::result {
 
 namespace ams::result::impl {
 
-    NORETURN WEAK void OnResultAssertion(Result result) {
+    NORETURN WEAK_SYMBOL void OnResultAssertion(Result result) {
         /* Assert that we should call fatal on result assertion. */
         /* If we shouldn't fatal, this will std::abort(); */
         /* If we should, we'll continue onwards. */

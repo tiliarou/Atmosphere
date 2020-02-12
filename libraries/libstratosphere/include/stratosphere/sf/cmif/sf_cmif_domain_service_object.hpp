@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -101,8 +101,6 @@ namespace ams::sf::cmif {
             static constexpr inline DomainServiceObjectDispatchTable s_CmifServiceDispatchTable{};
         private:
             virtual ServerDomainBase *GetServerDomain() = 0;
-        public:
-            /* TODO: Implement to use domain object processor. */
     };
 
     class MitmDomainServiceObject : public DomainServiceObject{};

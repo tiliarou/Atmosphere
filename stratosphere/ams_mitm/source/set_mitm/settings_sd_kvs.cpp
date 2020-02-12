@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -345,6 +345,12 @@ namespace ams::settings::fwdbg {
             /* NOTE: EXPERIMENTAL */
             /* If you do not know what you are doing, do not touch this yet. */
             R_ASSERT(ParseSettingsItemValue("atmosphere", "fsmitm_redirect_saves_to_sd", "u8!0x0"));
+
+            /* Controls whether to enable the deprecated hid mitm */
+            /* to fix compatibility with old homebrew. */
+            /* 0 = Do not enable, 1 = Enable. */
+            /* Please note this setting may be removed in a future release of Atmosphere. */
+            R_ASSERT(ParseSettingsItemValue("atmosphere", "enable_deprecated_hid_mitm", "u8!0x0"));
 
             /* Hbloader custom settings. */
 

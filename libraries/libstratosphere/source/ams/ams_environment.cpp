@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -36,7 +36,7 @@ namespace ams {
 
     extern ncm::ProgramId CurrentProgramId;
 
-    void WEAK ExceptionHandler(FatalErrorContext *ctx) {
+    void WEAK_SYMBOL ExceptionHandler(FatalErrorContext *ctx) {
         R_ASSERT(amsBpcInitialize());
         R_ASSERT(amsBpcRebootToFatalError(ctx));
         while (1) { /* ... */ }

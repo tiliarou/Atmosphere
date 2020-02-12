@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,8 +21,8 @@ namespace ams::creport {
     namespace {
 
         /* Convenience definitions. */
-        constexpr u32 LibnxThreadVarMagic   = 0x21545624; /* !TV$ */
-        constexpr u32 DumpedThreadInfoMagic = 0x32495444; /* DTI2 */
+        constexpr u32 LibnxThreadVarMagic   = util::FourCC<'!','T','V','$'>::Code;
+        constexpr u32 DumpedThreadInfoMagic = util::FourCC<'D','T','I','2'>::Code;
 
         /* Types. */
         template<typename T>
@@ -125,7 +125,7 @@ namespace ams::creport {
             }
 
             const svc::ThreadState thread_state = static_cast<svc::ThreadState>(_thread_state);
-            if (thread_state != svc::ThreadState::Waiting && thread_state != svc::ThreadState::Running) {
+            if (thread_state != svc::ThreadState_Waiting && thread_state != svc::ThreadState_Running) {
                 return false;
             }
         }

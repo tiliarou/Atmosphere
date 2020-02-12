@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -398,13 +398,6 @@ namespace ams::sm::impl {
 
             /* Don't try to register something already registered. */
             R_UNLESS(!HasServiceInfo(service), sm::ResultAlreadyRegistered());
-
-            /* Adjust session limit, if compile flags tell us to. */
-#ifdef SM_MINIMUM_SESSION_LIMIT
-            if (max_sessions < SM_MINIMUM_SESSION_LIMIT) {
-                max_sessions = SM_MINIMUM_SESSION_LIMIT;
-            }
-#endif
 
             /* Get free service. */
             ServiceInfo *free_service = GetFreeServiceInfo();

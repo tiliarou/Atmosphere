@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -66,7 +66,7 @@ namespace ams::creport {
             }
 
             bool IsUserBreak() const {
-                return this->exception_info.type == svc::DebugExceptionType::UserBreak;
+                return this->exception_info.type == svc::DebugException_UserBreak;
             }
 
             bool OpenProcess(os::ProcessId process_id) {

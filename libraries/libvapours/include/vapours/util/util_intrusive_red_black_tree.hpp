@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -28,8 +28,9 @@ namespace ams::util {
             template<class, class, class>
             friend class IntrusiveRedBlackTree;
         public:
-            IntrusiveRedBlackTreeNode() { /* ... */}
+            constexpr IntrusiveRedBlackTreeNode() : entry() { /* ... */}
     };
+    static_assert(std::is_literal_type<IntrusiveRedBlackTreeNode>::value);
 
     template<class T, class Traits, class Comparator>
     class IntrusiveRedBlackTree {
@@ -249,20 +250,23 @@ namespace ams::util {
             friend class IntrusiveRedBlackTree;
 
             static constexpr IntrusiveRedBlackTreeNode *GetNode(Derived *parent) {
-                return &(parent->*Member);
+                return std::addressof(parent->*Member);
             }
 
             static constexpr IntrusiveRedBlackTreeNode const *GetNode(Derived const *parent) {
-                return &(parent->*Member);
+                return std::addressof(parent->*Member);
             }
 
             static constexpr Derived *GetParent(IntrusiveRedBlackTreeNode *node) {
-                return static_cast<Derived *>(util::GetParentPointer<Member>(node));
+                return util::GetParentPointer<Member, Derived>(node);
             }
 
             static constexpr Derived const *GetParent(IntrusiveRedBlackTreeNode const *node) {
-                return static_cast<const Derived *>(util::GetParentPointer<Member>(node));
+                return util::GetParentPointer<Member, Derived>(node);
             }
+        private:
+            static constexpr TYPED_STORAGE(Derived) DerivedStorage = {};
+            static_assert(std::addressof(GetParent(GetNode(GetPointer(DerivedStorage)))) == GetPointer(DerivedStorage));
     };
 
     template<class Derived>

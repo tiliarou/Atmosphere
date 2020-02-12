@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -93,7 +93,7 @@ namespace {
         svc::DebugEventInfo d;
         while (true) {
             R_ASSERT(svcGetDebugEvent(reinterpret_cast<u8 *>(&d), debug_handle.Get()));
-            if (d.type == svc::DebugEventType::AttachProcess) {
+            if (d.type == svc::DebugEvent_AttachProcess) {
                 return ncm::ProgramId{d.info.attach_process.program_id};
             }
         }
@@ -163,23 +163,23 @@ namespace {
     using ServerOptions = sf::hipc::DefaultServerManagerOptions;
 
     constexpr sm::ServiceName ShellServiceName = sm::ServiceName::Encode("pm:shell");
-    constexpr size_t          ShellMaxSessions = 3;
+    constexpr size_t          ShellMaxSessions = 8; /* Official maximum is 3. */
 
     constexpr sm::ServiceName DebugMonitorServiceName = sm::ServiceName::Encode("pm:dmnt");
-    constexpr size_t          DebugMonitorMaxSessions = 3;
+    constexpr size_t          DebugMonitorMaxSessions = 16;
 
     constexpr sm::ServiceName BootModeServiceName = sm::ServiceName::Encode("pm:bm");
-    constexpr size_t          BootModeMaxSessions = 6;
+    constexpr size_t          BootModeMaxSessions = 8; /* Official maximum is 4. */
 
     constexpr sm::ServiceName InformationServiceName = sm::ServiceName::Encode("pm:info");
-    constexpr size_t          InformationMaxSessions = 32 - (ShellMaxSessions + DebugMonitorMaxSessions + BootModeMaxSessions);
+    constexpr size_t          InformationMaxSessions = 48 - (ShellMaxSessions + DebugMonitorMaxSessions + BootModeMaxSessions);
 
     static_assert(InformationMaxSessions >= 16, "InformationMaxSessions");
 
     /* pm:shell, pm:dmnt, pm:bm, pm:info. */
     constexpr size_t NumServers  = 4;
     constexpr size_t MaxSessions = ShellMaxSessions + DebugMonitorMaxSessions + BootModeMaxSessions + InformationMaxSessions;
-    static_assert(MaxSessions == 32, "MaxSessions");
+    static_assert(MaxSessions == 48, "MaxSessions");
     sf::hipc::ServerManager<NumServers, ServerOptions, MaxSessions> g_server_manager;
 
 }

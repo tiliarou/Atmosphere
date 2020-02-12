@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2019 Atmosphère-NX
+ * Copyright (c) 2018-2020 Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -21,7 +21,7 @@ namespace ams::emummc {
     namespace {
 
         /* Convenience Definitions. */
-        constexpr u32 StorageMagic = 0x30534645; /* EFS0 */
+        constexpr u32 StorageMagic = util::FourCC<'E','F','S','0'>::Code;
         constexpr size_t MaxDirLen = 0x7F;
 
         /* Types. */
