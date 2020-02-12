@@ -75,14 +75,9 @@ void config_gpios()
     gpio_configure_direction(TEGRA_GPIO(E, 6), GPIO_DIRECTION_INPUT);
     gpio_configure_direction(TEGRA_GPIO(H, 6), GPIO_DIRECTION_INPUT);
 
-    pinmux->gen1_i2c_scl = PINMUX_INPUT;
-    pinmux->gen1_i2c_sda = PINMUX_INPUT;
-    pinmux->pwr_i2c_scl = PINMUX_INPUT;
-    pinmux->pwr_i2c_sda = PINMUX_INPUT;
-    pinmux->uart1_rx = 0;
-    pinmux->uart1_tx = (PINMUX_INPUT | PINMUX_PULL_UP);
-    pinmux->uart1_rts = 0;
-    pinmux->uart1_cts = (PINMUX_INPUT | PINMUX_PULL_DOWN);
+    i2c_config(I2C_1);
+    i2c_config(I2C_5);
+    uart_config(UART_A);
 
     /* Configure volume up/down as inputs. */
     gpio_configure_mode(GPIO_BUTTON_VOL_UP, GPIO_MODE_GPIO);
@@ -167,16 +162,16 @@ void config_se_brom()
     set_aes_keyslot(0xE, sbk, 0x10);
     
     /* Lock SBK from being read. */
-    se->AES_KEYSLOT_FLAGS[0xE] = 0x7E;
+    se->SE_CRYPTO_KEYTABLE_ACCESS[0xE] = 0x7E;
     
     /* This memset needs to happen here, else TZRAM will behave weirdly later on. */
     memset((void *)0x7C010000, 0, 0x10000);
     
     pmc->crypto_op = 0;
-    se->INT_STATUS_REG = 0x1F;
+    se->SE_INT_STATUS = 0x1F;
     
     /* Lock SSK (although it's not set and unused anyways). */
-    se->AES_KEYSLOT_FLAGS[0xF] = 0x7E;
+    se->SE_CRYPTO_KEYTABLE_ACCESS[0xF] = 0x7E;
     
     /* Clear the boot reason to avoid problems later */
     pmc->scratch200 = 0;
@@ -236,8 +231,8 @@ void nx_hwinit()
     /* NOTE: [4.0.0+] This was removed. */
     /* clkrst_reboot(CARDEVICE_SE); */
     
-    /* Reboot unknown device. */
-    clkrst_reboot(CARDEVICE_UNK);
+    /* Reboot TZRAM. */
+    clkrst_reboot(CARDEVICE_TZRAM);
 
     /* Initialize I2C1. */
     /* NOTE: [6.0.0+] This was moved to after the PMIC is configured. */

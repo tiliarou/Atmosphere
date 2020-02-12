@@ -28,7 +28,7 @@ TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	src src/dbg
 DATA		:=	data
-INCLUDES	:=	include ../common/include
+INCLUDES	:=	include ../libraries/libvapours/include
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -37,7 +37,7 @@ ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mgeneral-regs-only #<- important
 DEFINES	:=	-D__CCPLEX__ -DATMOSPHERE_GIT_BRANCH=\"$(AMSBRANCH)\" -DATMOSPHERE_GIT_REV=\"$(AMSREV)\" -DATMOSPHERE_RELEASE_VERSION_HASH="0x$(AMSHASH)"
 CFLAGS	:= \
 	-g \
-	-O2 \
+	-Os \
 	-ffunction-sections \
 	-fdata-sections \
 	-fomit-frame-pointer \
@@ -48,7 +48,7 @@ CFLAGS	:= \
 	-Wall \
 	$(ARCH) $(DEFINES)
 
-CFLAGS	+=	$(INCLUDE) 
+CFLAGS	+=	$(INCLUDE)
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 

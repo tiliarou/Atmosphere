@@ -13,52 +13,45 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include <switch.h>
-#include <stratosphere.hpp>
-
-#include "spl_types.hpp"
 #include "spl_general_service.hpp"
 
-class CryptoService : public GeneralService {
-    public:
-        CryptoService(SecureMonitorWrapper *sw) : GeneralService(sw) {
-            /* ... */
-        }
+namespace ams::spl {
 
-        virtual ~CryptoService() {
-            this->GetSecureMonitorWrapper()->FreeAesKeyslots(this);
-        }
-    protected:
-        /* Actual commands. */
-        virtual Result GenerateAesKek(Out<AccessKey> out_access_key, KeySource key_source, u32 generation, u32 option);
-        virtual Result LoadAesKey(u32 keyslot, AccessKey access_key, KeySource key_source);
-        virtual Result GenerateAesKey(Out<AesKey> out_key, AccessKey access_key, KeySource key_source);
-        virtual Result DecryptAesKey(Out<AesKey> out_key, KeySource key_source, u32 generation, u32 option);
-        virtual Result CryptAesCtr(OutBuffer<u8, BufferType_Type1> out_buf, u32 keyslot, InBuffer<u8, BufferType_Type1> in_buf, IvCtr iv_ctr);
-        virtual Result ComputeCmac(Out<Cmac> out_cmac, u32 keyslot, InPointer<u8> in_buf);
-        virtual Result AllocateAesKeyslot(Out<u32> out_keyslot);
-        virtual Result FreeAesKeyslot(u32 keyslot);
-        virtual void GetAesKeyslotAvailableEvent(Out<CopiedHandle> out_hnd);
-    public:
-        DEFINE_SERVICE_DISPATCH_TABLE {
-            MakeServiceCommandMetaEx<Spl_Cmd_GetConfig, &CryptoService::GetConfig, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ExpMod, &CryptoService::ExpMod, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_SetConfig, &CryptoService::SetConfig, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateRandomBytes, &CryptoService::GenerateRandomBytes, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_IsDevelopment, &CryptoService::IsDevelopment, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_SetBootReason, &CryptoService::SetBootReason, CryptoService, FirmwareVersion_300>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GetBootReason, &CryptoService::GetBootReason, CryptoService, FirmwareVersion_300>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateAesKek, &CryptoService::GenerateAesKek, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_LoadAesKey, &CryptoService::LoadAesKey, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateAesKey, &CryptoService::GenerateAesKey, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_DecryptAesKey, &CryptoService::DecryptAesKey, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_CryptAesCtr, &CryptoService::CryptAesCtr, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ComputeCmac, &CryptoService::ComputeCmac, CryptoService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_AllocateAesKeyslot, &CryptoService::AllocateAesKeyslot, CryptoService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_FreeAesKeyslot, &CryptoService::FreeAesKeyslot, CryptoService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GetAesKeyslotAvailableEvent, &CryptoService::GetAesKeyslotAvailableEvent, CryptoService, FirmwareVersion_200>(),
+    class CryptoService : public GeneralService {
+        public:
+            CryptoService() : GeneralService() { /* ... */ }
+            virtual ~CryptoService();
+        protected:
+            /* Actual commands. */
+            virtual Result GenerateAesKek(sf::Out<AccessKey> out_access_key, KeySource key_source, u32 generation, u32 option);
+            virtual Result LoadAesKey(u32 keyslot, AccessKey access_key, KeySource key_source);
+            virtual Result GenerateAesKey(sf::Out<AesKey> out_key, AccessKey access_key, KeySource key_source);
+            virtual Result DecryptAesKey(sf::Out<AesKey> out_key, KeySource key_source, u32 generation, u32 option);
+            virtual Result CryptAesCtr(const sf::OutNonSecureBuffer &out_buf, u32 keyslot, const sf::InNonSecureBuffer &in_buf, IvCtr iv_ctr);
+            virtual Result ComputeCmac(sf::Out<Cmac> out_cmac, u32 keyslot, const sf::InPointerBuffer &in_buf);
+            virtual Result AllocateAesKeyslot(sf::Out<u32> out_keyslot);
+            virtual Result FreeAesKeyslot(u32 keyslot);
+            virtual void GetAesKeyslotAvailableEvent(sf::OutCopyHandle out_hnd);
+        public:
+            DEFINE_SERVICE_DISPATCH_TABLE {
+                MAKE_SERVICE_COMMAND_META(GetConfig),
+                MAKE_SERVICE_COMMAND_META(ExpMod),
+                MAKE_SERVICE_COMMAND_META(SetConfig),
+                MAKE_SERVICE_COMMAND_META(GenerateRandomBytes),
+                MAKE_SERVICE_COMMAND_META(IsDevelopment),
+                MAKE_SERVICE_COMMAND_META(SetBootReason,               hos::Version_300),
+                MAKE_SERVICE_COMMAND_META(GetBootReason,               hos::Version_300),
+                MAKE_SERVICE_COMMAND_META(GenerateAesKek),
+                MAKE_SERVICE_COMMAND_META(LoadAesKey),
+                MAKE_SERVICE_COMMAND_META(GenerateAesKey),
+                MAKE_SERVICE_COMMAND_META(DecryptAesKey),
+                MAKE_SERVICE_COMMAND_META(CryptAesCtr),
+                MAKE_SERVICE_COMMAND_META(ComputeCmac),
+                MAKE_SERVICE_COMMAND_META(AllocateAesKeyslot,          hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(FreeAesKeyslot,              hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(GetAesKeyslotAvailableEvent, hos::Version_200),
+            };
+    };
 
-        };
-};
+}

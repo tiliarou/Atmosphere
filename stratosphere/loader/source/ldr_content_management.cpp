@@ -13,486 +13,305 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include <cstring>
-#include <switch.h>
-#include <stratosphere.hpp>
-#include <strings.h>
-#include <vector>
-#include <algorithm>
-#include <map>
-
-#include "ldr_registration.hpp"
+#include <dirent.h>
 #include "ldr_content_management.hpp"
-#include "ldr_hid.hpp"
-#include "ldr_npdm.hpp"
+#include "ldr_ecs.hpp"
 
-#include "ini.h"
+namespace ams::ldr {
 
-static FsFileSystem g_CodeFileSystem = {};
-static FsFileSystem g_HblFileSystem = {};
+    namespace {
 
-static std::vector<u64> g_created_titles;
-static bool g_has_initialized_fs_dev = false;
+        /* DeviceNames. */
+        constexpr const char *CodeFileSystemDeviceName   = "code";
+        constexpr const char *HblFileSystemDeviceName    = "hbl";
+        constexpr const char *SdCardFileSystemDeviceName = "sdmc";
 
-/* Default to Key R, hold disables override, HBL at atmosphere/hbl.nsp. */
-static bool g_mounted_hbl_nsp = false;
-static char g_hbl_sd_path[FS_MAX_PATH+1] = "@Sdcard:/atmosphere/hbl.nsp\x00";
+        constexpr const char *SdCardStorageMountPoint = "@Sdcard";
 
-static OverrideKey g_default_override_key = {
-    .key_combination = KEY_L,
-    .override_by_default = true
-};
+        /* Globals. */
+        bool g_has_mounted_sd_card = false;
 
-struct HblOverrideConfig {
-    OverrideKey override_key;
-    u64 title_id;
-    bool override_any_app;
-};
-
-static HblOverrideConfig g_hbl_override_config = {
-    .override_key = {
-        .key_combination = KEY_R,
-        .override_by_default = true
-    },
-    .title_id = TitleId_AppletPhotoViewer,
-    .override_any_app = false
-};
-
-/* Static buffer for loader.ini contents at runtime. */
-static char g_config_ini_data[0x800];
-
-/* SetExternalContentSource extension */
-static std::map<u64, ContentManagement::ExternalContentSource> g_external_content_sources;
-
-Result ContentManagement::MountCode(u64 tid, FsStorageId sid) {
-    char path[FS_MAX_PATH] = {0};
-    Result rc;
-
-    /* We defer SD card mounting, so if relevant ensure it is mounted. */
-    if (!g_has_initialized_fs_dev) {
-        TryMountSdCard();
-    }
-
-    if (g_has_initialized_fs_dev) {
-        RefreshConfigurationData();
-    }
-
-    if (ShouldOverrideContentsWithSD(tid) && R_SUCCEEDED(MountCodeNspOnSd(tid))) {
-        return ResultSuccess;
-    }
-
-    if (R_FAILED(rc = ResolveContentPath(path, tid, sid))) {
-        return rc;
-    }
-
-    /* Fix up path. */
-    for (unsigned int i = 0; i < FS_MAX_PATH && path[i] != '\x00'; i++) {
-        if (path[i] == '\\') {
-            path[i] = '/';
-        }
-    }
-
-    /* Always re-initialize fsp-ldr, in case it's closed */
-    DoWithSmSession([&]() {
-        rc = fsldrInitialize();
-    });
-    if (R_FAILED(rc)) {
-        return rc;
-    }
-    ON_SCOPE_EXIT { fsldrExit(); };
-
-    if (R_FAILED(rc = fsldrOpenCodeFileSystem(tid, path, &g_CodeFileSystem))) {
-        return rc;
-    }
-
-    fsdevMountDevice("code", g_CodeFileSystem);
-    TryMountHblNspOnSd();
-    return rc;
-}
-
-Result ContentManagement::UnmountCode() {
-    if (g_mounted_hbl_nsp) {
-        fsdevUnmountDevice("hbl");
-        g_mounted_hbl_nsp = false;
-    }
-    fsdevUnmountDevice("code");
-    return ResultSuccess;
-}
-
-
-void ContentManagement::TryMountHblNspOnSd() {
-    char path[FS_MAX_PATH + 1];
-    strncpy(path, g_hbl_sd_path, FS_MAX_PATH);
-    path[FS_MAX_PATH] = 0;
-    for (unsigned int i = 0; i < FS_MAX_PATH && path[i] != '\x00'; i++) {
-        if (path[i] == '\\') {
-            path[i] = '/';
-        }
-    }
-    if (g_has_initialized_fs_dev && !g_mounted_hbl_nsp && R_SUCCEEDED(fsOpenFileSystemWithId(&g_HblFileSystem, 0, FsFileSystemType_ApplicationPackage, path))) {
-        fsdevMountDevice("hbl", g_HblFileSystem);
-        g_mounted_hbl_nsp = true;
-    }
-}
-
-Result ContentManagement::MountCodeNspOnSd(u64 tid) {
-    char path[FS_MAX_PATH+1] = {0};
-    snprintf(path, FS_MAX_PATH, "@Sdcard:/atmosphere/titles/%016lx/exefs.nsp", tid);
-    Result rc = fsOpenFileSystemWithId(&g_CodeFileSystem, 0, FsFileSystemType_ApplicationPackage, path);
-
-    if (R_SUCCEEDED(rc)) {
-        fsdevMountDevice("code", g_CodeFileSystem);
-        TryMountHblNspOnSd();
-    }
-
-    return rc;
-}
-
-Result ContentManagement::MountCodeForTidSid(Registration::TidSid *tid_sid) {
-    return MountCode(tid_sid->title_id, tid_sid->storage_id);
-}
-
-Result ContentManagement::ResolveContentPath(char *out_path, u64 tid, FsStorageId sid) {
-    Result rc;
-    LrRegisteredLocationResolver reg;
-    LrLocationResolver lr;
-    char path[FS_MAX_PATH] = {0};
-
-    /* Try to get the path from the registered resolver. */
-    if (R_FAILED(rc = lrOpenRegisteredLocationResolver(&reg))) {
-        return rc;
-    }
-
-    if (R_SUCCEEDED(rc = lrRegLrResolveProgramPath(&reg, tid, path))) {
-        strncpy(out_path, path, FS_MAX_PATH);
-    } else if (rc != ResultLrProgramNotFound) {
-        return rc;
-    }
-
-    serviceClose(&reg.s);
-    if (R_SUCCEEDED(rc)) {
-        return rc;
-    }
-
-    /* If getting the path from the registered resolver fails, fall back to the normal resolver. */
-    if (R_FAILED(rc = lrOpenLocationResolver(sid, &lr))) {
-        return rc;
-    }
-
-    if (R_SUCCEEDED(rc = lrLrResolveProgramPath(&lr, tid, path))) {
-        strncpy(out_path, path, FS_MAX_PATH);
-    }
-
-    serviceClose(&lr.s);
-
-    return rc;
-}
-
-Result ContentManagement::ResolveContentPathForTidSid(char *out_path, Registration::TidSid *tid_sid) {
-    return ResolveContentPath(out_path, tid_sid->title_id, tid_sid->storage_id);
-}
-
-Result ContentManagement::RedirectContentPath(const char *path, u64 tid, FsStorageId sid) {
-    Result rc;
-    LrLocationResolver lr;
-
-    if (R_FAILED(rc = lrOpenLocationResolver(sid, &lr))) {
-        return rc;
-    }
-
-    rc = lrLrRedirectProgramPath(&lr, tid, path);
-
-    serviceClose(&lr.s);
-
-    return rc;
-}
-
-Result ContentManagement::RedirectContentPathForTidSid(const char *path, Registration::TidSid *tid_sid) {
-    return RedirectContentPath(path, tid_sid->title_id, tid_sid->storage_id);
-}
-
-void ContentManagement::RedirectHtmlDocumentPathForHbl(u64 tid, FsStorageId sid) {
-    LrLocationResolver lr;
-    char path[FS_MAX_PATH] = {0};
-
-    /* Open resolver. */
-    if (R_FAILED(lrOpenLocationResolver(sid, &lr))) {
-        return;
-    }
-
-    /* Ensure close on exit. */
-    ON_SCOPE_EXIT { serviceClose(&lr.s); };
-
-    /* Only redirect the HTML document path if there is not one already. */
-    if (R_SUCCEEDED(lrLrResolveApplicationHtmlDocumentPath(&lr, tid, path))) {
-        return;
-    }
-
-    /* We just need to set this to any valid NCA path. Let's use the executable path. */
-    if (R_FAILED(lrLrResolveProgramPath(&lr, tid, path))) {
-        return;
-    }
-
-    lrLrRedirectApplicationHtmlDocumentPath(&lr, tid, path);
-}
-
-bool ContentManagement::HasCreatedTitle(u64 tid) {
-    return std::find(g_created_titles.begin(), g_created_titles.end(), tid) != g_created_titles.end();
-}
-
-void ContentManagement::SetCreatedTitle(u64 tid) {
-    if (!HasCreatedTitle(tid)) {
-        g_created_titles.push_back(tid);
-    }
-}
-
-static OverrideKey ParseOverrideKey(const char *value) {
-    OverrideKey cfg;
-
-    /* Parse on by default. */
-    if (value[0] == '!') {
-        cfg.override_by_default = true;
-        value++;
-    } else {
-        cfg.override_by_default = false;
-    }
-
-    /* Parse key combination. */
-    if (strcasecmp(value, "A") == 0) {
-        cfg.key_combination = KEY_A;
-    } else if (strcasecmp(value, "B") == 0) {
-        cfg.key_combination = KEY_B;
-    } else if (strcasecmp(value, "X") == 0) {
-        cfg.key_combination = KEY_X;
-    } else if (strcasecmp(value, "Y") == 0) {
-        cfg.key_combination = KEY_Y;
-    } else if (strcasecmp(value, "LS") == 0) {
-        cfg.key_combination = KEY_LSTICK;
-    } else if (strcasecmp(value, "RS") == 0) {
-        cfg.key_combination = KEY_RSTICK;
-    } else if (strcasecmp(value, "L") == 0) {
-        cfg.key_combination = KEY_L;
-    } else if (strcasecmp(value, "R") == 0) {
-        cfg.key_combination = KEY_R;
-    } else if (strcasecmp(value, "ZL") == 0) {
-        cfg.key_combination = KEY_ZL;
-    } else if (strcasecmp(value, "ZR") == 0) {
-        cfg.key_combination = KEY_ZR;
-    } else if (strcasecmp(value, "PLUS") == 0) {
-        cfg.key_combination = KEY_PLUS;
-    } else if (strcasecmp(value, "MINUS") == 0) {
-        cfg.key_combination = KEY_MINUS;
-    } else if (strcasecmp(value, "DLEFT") == 0) {
-        cfg.key_combination = KEY_DLEFT;
-    } else if (strcasecmp(value, "DUP") == 0) {
-        cfg.key_combination = KEY_DUP;
-    } else if (strcasecmp(value, "DRIGHT") == 0) {
-        cfg.key_combination = KEY_DRIGHT;
-    } else if (strcasecmp(value, "DDOWN") == 0) {
-        cfg.key_combination = KEY_DDOWN;
-    } else if (strcasecmp(value, "SL") == 0) {
-        cfg.key_combination = KEY_SL;
-    } else if (strcasecmp(value, "SR") == 0) {
-        cfg.key_combination = KEY_SR;
-    } else {
-        cfg.key_combination = 0;
-    }
-
-    return cfg;
-}
-
-static int LoaderIniHandler(void *user, const char *section, const char *name, const char *value) {
-    /* Taken and modified, with love, from Rajkosto's implementation. */
-    if (strcasecmp(section, "hbl_config") == 0) {
-        if (strcasecmp(name, "title_id") == 0) {
-            if (strcasecmp(value, "app") == 0) {
-                /* DEPRECATED */
-                g_hbl_override_config.override_any_app = true;
-                g_hbl_override_config.title_id = 0;
-            } else {
-                u64 override_tid = strtoul(value, NULL, 16);
-                if (override_tid != 0) {
-                    g_hbl_override_config.title_id = override_tid;
+        /* Helpers. */
+        inline void FixFileSystemPath(char *path) {
+            /* Paths will fail when passed to FS if they use the wrong kinds of slashes. */
+            for (size_t i = 0; i < FS_MAX_PATH && path[i]; i++) {
+                if (path[i] == '\\') {
+                    path[i] = '/';
                 }
             }
-        } else if (strcasecmp(name, "path") == 0) {
-            while (*value == '/' || *value == '\\') {
-                value++;
+        }
+
+        inline const char *GetRelativePathStart(const char *relative_path) {
+            /* We assume filenames don't start with slashes when formatting. */
+            while (*relative_path == '/' || *relative_path == '\\') {
+                relative_path++;
             }
-            snprintf(g_hbl_sd_path, FS_MAX_PATH, "@Sdcard:/%s", value);
-            g_hbl_sd_path[FS_MAX_PATH] = 0;
-        } else if (strcasecmp(name, "override_key") == 0) {
-            g_hbl_override_config.override_key = ParseOverrideKey(value);
-        } else if (strcasecmp(name, "override_any_app") == 0) {
-            if (strcasecmp(value, "true") == 0 || strcasecmp(value, "1") == 0) {
-                g_hbl_override_config.override_any_app = true;
-            } else if (strcasecmp(value, "false") == 0 || strcasecmp(value, "0") == 0) {
-                g_hbl_override_config.override_any_app = false;
-            } else {
-                /* I guess we default to not changing the value? */
+            return relative_path;
+        }
+
+        Result MountSdCardFileSystem() {
+            return fsdevMountSdmc();
+        }
+
+        Result MountNspFileSystem(const char *device_name, const char *path) {
+            FsFileSystem fs;
+            R_TRY(fsOpenFileSystemWithId(&fs, 0, FsFileSystemType_ApplicationPackage, path));
+            AMS_ASSERT(fsdevMountDevice(device_name, fs) >= 0);
+            return ResultSuccess();
+        }
+
+        FILE *OpenFile(const char *device_name, const char *relative_path) {
+            /* Allow nullptr device_name/relative path -- those are simply not openable. */
+            if (device_name == nullptr || relative_path == nullptr) {
+                return nullptr;
             }
+
+            char path[FS_MAX_PATH];
+            std::snprintf(path, FS_MAX_PATH, "%s:/%s", device_name, GetRelativePathStart(relative_path));
+            FixFileSystemPath(path);
+            return fopen(path, "rb");
         }
-    } else if (strcasecmp(section, "default_config") == 0) {
-        if (strcasecmp(name, "override_key") == 0) {
-            g_default_override_key = ParseOverrideKey(value);
-        }
-    } else {
-        return 0;
-    }
-    return 1;
-}
 
-static int LoaderTitleSpecificIniHandler(void *user, const char *section, const char *name, const char *value) {
-    /* We'll output an override key when relevant. */
-    OverrideKey *user_cfg = reinterpret_cast<OverrideKey *>(user);
-
-    if (strcasecmp(section, "override_config") == 0) {
-        if (strcasecmp(name, "override_key") == 0) {
-            *user_cfg = ParseOverrideKey(value);
-        }
-    } else {
-        return 0;
-    }
-    return 1;
-}
-
-void ContentManagement::RefreshConfigurationData() {
-    FILE *config = fopen("sdmc:/atmosphere/loader.ini", "r");
-    if (config == NULL) {
-        return;
-    }
-
-    std::fill(g_config_ini_data, g_config_ini_data + 0x800, 0);
-    fread(g_config_ini_data, 1, 0x7FF, config);
-    fclose(config);
-
-    ini_parse_string(g_config_ini_data, LoaderIniHandler, NULL);
-}
-
-void ContentManagement::TryMountSdCard() {
-    /* Mount SD card, if psc, bus, and pcv have been created. */
-    if (!g_has_initialized_fs_dev && HasCreatedTitle(TitleId_Psc) && HasCreatedTitle(TitleId_Bus) && HasCreatedTitle(TitleId_Pcv)) {
-        bool can_mount = true;
-        DoWithSmSession([&]() {
-            Handle tmp_hnd = 0;
-            static const char * const required_active_services[] = {"pcv", "gpio", "pinmux", "psc:c"};
-            for (unsigned int i = 0; i < sizeof(required_active_services) / sizeof(required_active_services[0]); i++) {
-                if (R_FAILED(smGetServiceOriginal(&tmp_hnd, smEncodeName(required_active_services[i])))) {
-                    can_mount = false;
-                    break;
-                } else {
-                    svcCloseHandle(tmp_hnd);   
-                }
+        FILE *OpenLooseSdFile(ncm::ProgramId program_id, const char *relative_path) {
+            /* Allow nullptr relative path -- those are simply not openable. */
+            if (relative_path == nullptr) {
+                return nullptr;
             }
-        });
 
-        if (can_mount && R_SUCCEEDED(fsdevMountSdmc())) {
-            g_has_initialized_fs_dev = true;
+            char path[FS_MAX_PATH];
+            std::snprintf(path, FS_MAX_PATH, "/atmosphere/contents/%016lx/exefs/%s", static_cast<u64>(program_id), GetRelativePathStart(relative_path));
+            FixFileSystemPath(path);
+            return OpenFile(SdCardFileSystemDeviceName, path);
         }
-    }
-}
 
-static bool IsHBLTitleId(u64 tid) {
-    return ((g_hbl_override_config.override_any_app && TitleIdIsApplication(tid)) || (tid == g_hbl_override_config.title_id));
-}
+        bool IsFileStubbed(ncm::ProgramId program_id, const cfg::OverrideStatus &status, const char *relative_path) {
+            /* Allow nullptr relative path -- those are simply not openable. */
+            if (relative_path == nullptr) {
+                return true;
+            }
 
-OverrideKey ContentManagement::GetTitleOverrideKey(u64 tid) {
-    OverrideKey cfg = g_default_override_key;
-    char path[FS_MAX_PATH+1] = {0};
-    snprintf(path, FS_MAX_PATH, "sdmc:/atmosphere/titles/%016lx/config.ini", tid);
+            /* Only allow stubbing in the case where we're considering SD card content. */
+            if (!status.IsProgramSpecific()) {
+                return false;
+            }
 
-
-    FILE *config = fopen(path, "r");
-    if (config != NULL) {
-        ON_SCOPE_EXIT { fclose(config); };
-
-        /* Parse current title ini. */
-        ini_parse_file(config, LoaderTitleSpecificIniHandler, &cfg);
-    }
-
-    return cfg;
-}
-
-static bool ShouldOverrideContents(OverrideKey *cfg) {
-    u64 kDown = 0;
-    bool keys_triggered = (R_SUCCEEDED(HidManagement::GetKeysHeld(&kDown)) && ((kDown & cfg->key_combination) != 0));
-    return g_has_initialized_fs_dev && (cfg->override_by_default ^ keys_triggered);
-}
-
-bool ContentManagement::ShouldOverrideContentsWithHBL(u64 tid) {
-    if (g_mounted_hbl_nsp && tid >= TitleId_AppletStart && HasCreatedTitle(TitleId_AppletQlaunch)) {
-        /* Return whether we should override contents with HBL. */
-        return IsHBLTitleId(tid) && ShouldOverrideContents(&g_hbl_override_config.override_key);
-    } else {
-        /* Don't override if we failed to mount HBL or haven't launched qlaunch. */
-        return false;
-    }
-}
-
-bool ContentManagement::ShouldOverrideContentsWithSD(u64 tid) {
-    if (g_has_initialized_fs_dev) {
-        if (tid >= TitleId_AppletStart && HasCreatedTitle(TitleId_AppletQlaunch)) {
-            /* Check whether we should override with non-HBL. */
-            OverrideKey title_cfg = GetTitleOverrideKey(tid);
-            return ShouldOverrideContents(&title_cfg);
-        } else {
-            /* Always redirect before qlaunch. */
+            char path[FS_MAX_PATH];
+            std::snprintf(path, FS_MAX_PATH, "/atmosphere/contents/%016lx/exefs/%s.stub", static_cast<u64>(program_id), GetRelativePathStart(relative_path));
+            FixFileSystemPath(path);
+            FILE *f = OpenFile(SdCardFileSystemDeviceName, path);
+            if (f == nullptr) {
+                return false;
+            }
+            fclose(f);
             return true;
         }
-    } else {
-        /* Never redirect before we can do so. */
-        return false;
-    }
-}
 
-/* SetExternalContentSource extension */
-ContentManagement::ExternalContentSource *ContentManagement::GetExternalContentSource(u64 tid) {
-    auto i = g_external_content_sources.find(tid);
-    if (i == g_external_content_sources.end()) {
-        return nullptr;
-    } else {
-        return &i->second;
-    }
-}
+        FILE *OpenBaseExefsFile(ncm::ProgramId program_id, const cfg::OverrideStatus &status, const char *relative_path) {
+            /* Allow nullptr relative path -- those are simply not openable. */
+            if (relative_path == nullptr) {
+                return nullptr;
+            }
 
-Result ContentManagement::SetExternalContentSource(u64 tid, FsFileSystem filesystem) {
-    if (g_external_content_sources.size() >= 16) {
-        return ResultLoaderTooManyArguments; /* TODO: Is this an appropriate error? */
+            /* Check if stubbed. */
+            if (IsFileStubbed(program_id, status, relative_path)) {
+                return nullptr;
+            }
+
+            return OpenFile(CodeFileSystemDeviceName, relative_path);
+        }
+
     }
 
-    /* Remove any existing ECS for this title. */
-    ClearExternalContentSource(tid);
-
-    char mountpoint[32];
-    ExternalContentSource::GenerateMountpointName(tid, mountpoint, sizeof(mountpoint));
-    if (fsdevMountDevice(mountpoint, filesystem) == -1) {
-        return ResultFsMountNameAlreadyExists;
+    /* ScopedCodeMount functionality. */
+    ScopedCodeMount::ScopedCodeMount(const ncm::ProgramLocation &loc) : has_status(false), is_code_mounted(false), is_hbl_mounted(false) {
+        this->result = this->Initialize(loc);
     }
-    g_external_content_sources.emplace(
-        std::piecewise_construct,
-        std::make_tuple(tid),
-        std::make_tuple(tid, mountpoint));
 
-    return ResultSuccess;
-}
-
-void ContentManagement::ClearExternalContentSource(u64 tid) {
-    auto i = g_external_content_sources.find(tid);
-    if (i != g_external_content_sources.end()) {
-        g_external_content_sources.erase(i);
+    ScopedCodeMount::ScopedCodeMount(const ncm::ProgramLocation &loc, const cfg::OverrideStatus &o) : override_status(o), has_status(true), is_code_mounted(false), is_hbl_mounted(false) {
+        this->result = this->Initialize(loc);
     }
-}
 
-void ContentManagement::ExternalContentSource::GenerateMountpointName(u64 tid, char *out, size_t max_length) {
-    snprintf(out, max_length, "ecs-%016lx", tid);
-}
+    ScopedCodeMount::~ScopedCodeMount() {
+        /* Unmount devices. */
+        if (this->is_code_mounted) {
+            fsdevUnmountDevice(CodeFileSystemDeviceName);
+        }
+        if (this->is_hbl_mounted) {
+            fsdevUnmountDevice(HblFileSystemDeviceName);
+        }
+    }
 
-ContentManagement::ExternalContentSource::ExternalContentSource(u64 tid, const char *mountpoint) : tid(tid) {
-    strncpy(this->mountpoint, mountpoint, sizeof(this->mountpoint));
-    NpdmUtils::InvalidateCache(tid);
-}
+    Result ScopedCodeMount::MountCodeFileSystem(const ncm::ProgramLocation &loc) {
+        char path[FS_MAX_PATH];
 
-ContentManagement::ExternalContentSource::~ExternalContentSource() {
-    fsdevUnmountDevice(mountpoint);
+        /* Try to get the content path. */
+        R_TRY(ResolveContentPath(path, loc));
+
+        /* Try to mount the content path. */
+        FsFileSystem fs;
+        R_TRY(fsldrOpenCodeFileSystem(static_cast<u64>(loc.program_id), path, &fs));
+        AMS_ASSERT(fsdevMountDevice(CodeFileSystemDeviceName, fs) != -1);
+
+        /* Note that we mounted code. */
+        this->is_code_mounted = true;
+        return ResultSuccess();
+    }
+
+    Result ScopedCodeMount::MountSdCardCodeFileSystem(const ncm::ProgramLocation &loc) {
+        char path[FS_MAX_PATH];
+
+        /* Print and fix path. */
+        std::snprintf(path, FS_MAX_PATH, "%s:/atmosphere/contents/%016lx/exefs.nsp", SdCardStorageMountPoint, static_cast<u64>(loc.program_id));
+        FixFileSystemPath(path);
+        R_TRY(MountNspFileSystem(CodeFileSystemDeviceName, path));
+
+        /* Note that we mounted code. */
+        this->is_code_mounted = true;
+        return ResultSuccess();
+    }
+
+    Result ScopedCodeMount::MountHblFileSystem() {
+        char path[FS_MAX_PATH];
+
+        /* Print and fix path. */
+        std::snprintf(path, FS_MAX_PATH, "%s:/%s", SdCardStorageMountPoint, GetRelativePathStart(cfg::GetHblPath()));
+        FixFileSystemPath(path);
+        R_TRY(MountNspFileSystem(HblFileSystemDeviceName, path));
+
+        /* Note that we mounted HBL. */
+        this->is_hbl_mounted = true;
+        return ResultSuccess();
+    }
+
+
+    Result ScopedCodeMount::Initialize(const ncm::ProgramLocation &loc) {
+        bool is_sd_initialized = cfg::IsSdCardInitialized();
+
+        /* Check if we're ready to mount the SD card. */
+        if (!g_has_mounted_sd_card) {
+            if (is_sd_initialized) {
+                R_ASSERT(MountSdCardFileSystem());
+                g_has_mounted_sd_card = true;
+            }
+        }
+
+        /* Capture override status, if necessary. */
+        if (!this->has_status) {
+            this->InitializeOverrideStatus(loc);
+        }
+
+        /* Check if we should override contents. */
+        if (this->override_status.IsHbl()) {
+            /* Try to mount HBL. */
+            this->MountHblFileSystem();
+        }
+        if (this->override_status.IsProgramSpecific()) {
+            /* Try to mount Code NSP on SD. */
+            this->MountSdCardCodeFileSystem(loc);
+        }
+
+        /* If we haven't already mounted code, mount it. */
+        if (!this->IsCodeMounted()) {
+            R_TRY(this->MountCodeFileSystem(loc));
+        }
+
+        return ResultSuccess();
+    }
+
+    void ScopedCodeMount::InitializeOverrideStatus(const ncm::ProgramLocation &loc) {
+        AMS_ASSERT(!this->has_status);
+        this->override_status = cfg::CaptureOverrideStatus(loc.program_id);
+        this->has_status = true;
+    }
+
+    Result OpenCodeFile(FILE *&out, ncm::ProgramId program_id, const cfg::OverrideStatus &status, const char *relative_path) {
+        FILE *f = nullptr;
+        const char *ecs_device_name = ecs::Get(program_id);
+
+        if (ecs_device_name != nullptr) {
+            /* First priority: Open from external content. */
+            f = OpenFile(ecs_device_name, relative_path);
+        } else if (status.IsHbl()) {
+            /* Next, try to open from HBL. */
+            f = OpenFile(HblFileSystemDeviceName, relative_path);
+        } else {
+            /* If not ECS or HBL, try a loose file on the SD. */
+            if (status.IsProgramSpecific()) {
+                f = OpenLooseSdFile(program_id, relative_path);
+            }
+
+            /* If we fail, try the original exefs. */
+            if (f == nullptr) {
+                f = OpenBaseExefsFile(program_id, status, relative_path);
+            }
+        }
+
+        /* If nothing worked, we failed to find the path. */
+        R_UNLESS(f != nullptr, fs::ResultPathNotFound());
+
+        out = f;
+        return ResultSuccess();
+    }
+
+    Result OpenCodeFileFromBaseExefs(FILE *&out, ncm::ProgramId program_id, const cfg::OverrideStatus &status, const char *relative_path) {
+        /* Open the file. */
+        FILE *f = OpenBaseExefsFile(program_id, status, relative_path);
+        R_UNLESS(f != nullptr, fs::ResultPathNotFound());
+
+        out = f;
+        return ResultSuccess();
+    }
+
+    /* Redirection API. */
+    Result ResolveContentPath(char *out_path, const ncm::ProgramLocation &loc) {
+        char path[FS_MAX_PATH];
+
+        /* Try to get the path from the registered resolver. */
+        LrRegisteredLocationResolver reg;
+        R_TRY(lrOpenRegisteredLocationResolver(&reg));
+        ON_SCOPE_EXIT { serviceClose(&reg.s); };
+
+        R_TRY_CATCH(lrRegLrResolveProgramPath(&reg, static_cast<u64>(loc.program_id), path)) {
+            R_CATCH(lr::ResultProgramNotFound) {
+                /* Program wasn't found via registered resolver, fall back to the normal resolver. */
+                LrLocationResolver lr;
+                R_TRY(lrOpenLocationResolver(static_cast<NcmStorageId>(loc.storage_id), &lr));
+                ON_SCOPE_EXIT { serviceClose(&lr.s); };
+
+                R_TRY(lrLrResolveProgramPath(&lr, static_cast<u64>(loc.program_id), path));
+            }
+        } R_END_TRY_CATCH;
+
+        std::strncpy(out_path, path, FS_MAX_PATH);
+        out_path[FS_MAX_PATH - 1] = '\0';
+        FixFileSystemPath(out_path);
+        return ResultSuccess();
+    }
+
+    Result RedirectContentPath(const char *path, const ncm::ProgramLocation &loc) {
+        LrLocationResolver lr;
+        R_TRY(lrOpenLocationResolver(static_cast<NcmStorageId>(loc.storage_id), &lr));
+        ON_SCOPE_EXIT { serviceClose(&lr.s); };
+
+        return lrLrRedirectProgramPath(&lr, static_cast<u64>(loc.program_id), path);
+    }
+
+    Result RedirectHtmlDocumentPathForHbl(const ncm::ProgramLocation &loc) {
+        char path[FS_MAX_PATH];
+
+        /* Open a location resolver. */
+        LrLocationResolver lr;
+        R_TRY(lrOpenLocationResolver(static_cast<NcmStorageId>(loc.storage_id), &lr));
+        ON_SCOPE_EXIT { serviceClose(&lr.s); };
+
+        /* If there's already a Html Document path, we don't need to set one. */
+        R_UNLESS(R_FAILED(lrLrResolveApplicationHtmlDocumentPath(&lr, static_cast<u64>(loc.program_id), path)), ResultSuccess());
+
+        /* We just need to set this to any valid NCA path. Let's use the executable path. */
+        R_TRY(lrLrResolveProgramPath(&lr, static_cast<u64>(loc.program_id), path));
+        R_TRY(lrLrRedirectApplicationHtmlDocumentPath(&lr, static_cast<u64>(loc.program_id), static_cast<u64>(loc.program_id), path));
+
+        return ResultSuccess();
+    }
+
 }

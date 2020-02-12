@@ -38,7 +38,7 @@ TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	src src/sdmmc src/lib src/lib/fatfs src/display
 DATA		:=	data
-INCLUDES	:=	include ../../common/include
+INCLUDES	:=	include ../../libraries/libvapours/include
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -89,7 +89,7 @@ export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 			$(foreach dir,$(DATA),$(CURDIR)/$(dir)) \
 			$(AMS)/exosphere $(AMS)/exosphere/lp0fw $(AMS)/exosphere/rebootstub \
 			$(AMS)/thermosphere $(AMS)/fusee/fusee-primary $(AMS)/sept/sept-primary \
-			$(AMS)/sept/sept-secondary $(KIPDIRS)
+			$(AMS)/sept/sept-secondary $(AMS)/emummc $(AMS)/mesosphere/kernel_ldr $(KIPDIRS)
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
@@ -99,8 +99,8 @@ SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 KIPFILES 	:=	loader.kip pm.kip sm.kip ams_mitm.kip spl.kip boot.kip
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*))) fusee-primary.bin \
 				exosphere.bin lp0fw.bin rebootstub.bin thermosphere.bin splash_screen.bmp \
-				sept-primary.bin sept-secondary.enc \
-				$(KIPFILES)
+				sept-primary.bin sept-secondary_00.enc sept-secondary_01.enc emummc.kip \
+				kernel_ldr.bin $(KIPFILES)
 
 #---------------------------------------------------------------------------------
 # use CXX for linking C++ projects, CC for standard C
@@ -128,7 +128,7 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
 .PHONY: $(BUILD) clean all
-.PHONY: check_fusee_primary check_exosphere check_sept check_thermosphere check_stratosphere
+.PHONY: check_fusee_primary check_exosphere check_sept check_emummc check_thermosphere check_stratosphere check_libraries
 
 #---------------------------------------------------------------------------------
 all: $(BUILD)
@@ -142,14 +142,23 @@ check_exosphere:
 check_sept:
 	@$(MAKE) -C $(AMS)/sept all
 
+check_emummc:
+	@$(MAKE) -C $(AMS)/emummc EMUMMCDIR=$(AMS)/emummc all
+
 check_thermosphere:
 	@$(MAKE) -C $(AMS)/thermosphere all
 
-check_stratosphere:
+check_stratosphere: check_libraries
 	@$(MAKE) -C $(AMS)/stratosphere all
 
+check_mesosphere: check_libraries
+	@$(MAKE) -C $(AMS)/mesosphere all
 
-$(BUILD): check_fusee_primary check_exosphere check_sept check_thermosphere check_stratosphere
+check_libraries:
+	@$(MAKE) -C $(AMS)/libraries all
+
+
+$(BUILD): check_fusee_primary check_exosphere check_sept check_emummc check_thermosphere check_libraries check_stratosphere check_mesosphere
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
@@ -159,8 +168,11 @@ clean:
 	@$(MAKE) -C $(AMS)/fusee/fusee-primary clean
 	@$(MAKE) -C $(AMS)/exosphere clean
 	@$(MAKE) -C $(AMS)/thermosphere clean
+	@$(MAKE) -C $(AMS)/libraries clean
+	@$(MAKE) -C $(AMS)/mesosphere clean
 	@$(MAKE) -C $(AMS)/stratosphere clean
 	@$(MAKE) -C $(AMS)/sept clean
+	@$(MAKE) -C $(AMS)/emummc clean
 	@rm -fr $(BUILD) $(TARGET).bin $(TARGET).elf
 
 #---------------------------------------------------------------------------------
@@ -194,22 +206,27 @@ fusee_primary.bin.o	fusee_primary_bin.h:	fusee-primary.bin
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(_bin2o)
-    
+
 sept_primary.bin.o	sept_primary_bin.h:	sept-primary.bin
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(_bin2o)
-    
-sept_secondary.enc.o	sept_secondary_enc.h:	sept-secondary.enc
+
+sept_secondary_00.enc.o	sept_secondary_00.h:	sept-secondary_00.enc
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(_bin2o)
-    
+
+sept_secondary_01.enc.o	sept_secondary_01_enc.h:	sept-secondary_01.enc
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@$(_bin2o)
+
 %.bin.o	%_bin.h:	%.bin
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)
-    
+
 %.bmp.o	%_bmp.h:	%.bmp
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)

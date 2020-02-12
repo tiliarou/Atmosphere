@@ -13,58 +13,54 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include <switch.h>
-#include <stratosphere.hpp>
-
-#include "spl_types.hpp"
 #include "spl_rsa_service.hpp"
 
-class EsService : public RsaService {
-    public:
-        EsService(SecureMonitorWrapper *sw) : RsaService(sw) {
-            /* ... */
-        }
+namespace ams::spl {
 
-        virtual ~EsService() {
-            /* ... */
-        }
-    protected:
-        /* Actual commands. */
-        virtual Result ImportEsKey(InPointer<u8> src, AccessKey access_key, KeySource key_source, u32 option);
-        virtual Result UnwrapTitleKey(Out<AccessKey> out_access_key, InPointer<u8> base, InPointer<u8> mod, InPointer<u8> label_digest, u32 generation);
-        virtual Result UnwrapCommonTitleKey(Out<AccessKey> out_access_key, KeySource key_source, u32 generation);
-        virtual Result ImportDrmKey(InPointer<u8> src, AccessKey access_key, KeySource key_source);
-        virtual Result DrmExpMod(OutPointerWithClientSize<u8> out, InPointer<u8> base, InPointer<u8> mod);
-        virtual Result UnwrapElicenseKey(Out<AccessKey> out_access_key, InPointer<u8> base, InPointer<u8> mod, InPointer<u8> label_digest, u32 generation);
-        virtual Result LoadElicenseKey(u32 keyslot, AccessKey access_key);
-    public:
-        DEFINE_SERVICE_DISPATCH_TABLE {
-            MakeServiceCommandMetaEx<Spl_Cmd_GetConfig, &EsService::GetConfig, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ExpMod, &EsService::ExpMod, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_SetConfig, &EsService::SetConfig, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateRandomBytes, &EsService::GenerateRandomBytes, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_IsDevelopment, &EsService::IsDevelopment, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_SetBootReason, &EsService::SetBootReason, EsService, FirmwareVersion_300>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GetBootReason, &EsService::GetBootReason, EsService, FirmwareVersion_300>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateAesKek, &EsService::GenerateAesKek, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_LoadAesKey, &EsService::LoadAesKey, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateAesKey, &EsService::GenerateAesKey, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_DecryptAesKey, &EsService::DecryptAesKey, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_CryptAesCtr, &EsService::CryptAesCtr, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ComputeCmac, &EsService::ComputeCmac, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_AllocateAesKeyslot, &EsService::AllocateAesKeyslot, EsService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_FreeAesKeyslot, &EsService::FreeAesKeyslot, EsService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GetAesKeyslotAvailableEvent, &EsService::GetAesKeyslotAvailableEvent, EsService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_DecryptRsaPrivateKey, &EsService::DecryptRsaPrivateKeyDeprecated, EsService, FirmwareVersion_400, FirmwareVersion_400>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_DecryptRsaPrivateKey, &EsService::DecryptRsaPrivateKey, EsService, FirmwareVersion_500>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ImportEsKey, &EsService::ImportEsKey, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_UnwrapTitleKey, &EsService::UnwrapTitleKey, EsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_UnwrapCommonTitleKey, &EsService::UnwrapCommonTitleKey, EsService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ImportDrmKey, &EsService::ImportDrmKey, EsService, FirmwareVersion_500>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_DrmExpMod, &EsService::DrmExpMod, EsService, FirmwareVersion_500>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_UnwrapElicenseKey, &EsService::UnwrapElicenseKey, EsService, FirmwareVersion_600>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_LoadElicenseKey, &EsService::LoadElicenseKey, EsService, FirmwareVersion_600>(),
-        };
-};
+    class EsService : public RsaService {
+        public:
+            EsService() : RsaService() { /* ... */ }
+            virtual ~EsService() { /* ... */}
+        protected:
+            /* Actual commands. */
+            virtual Result ImportEsKeyDeprecated(const sf::InPointerBuffer &src, AccessKey access_key, KeySource key_source, u32 option);
+            virtual Result ImportEsKey(const sf::InPointerBuffer &src, AccessKey access_key, KeySource key_source);
+            virtual Result UnwrapTitleKey(sf::Out<AccessKey> out_access_key, const sf::InPointerBuffer &base, const sf::InPointerBuffer &mod, const sf::InPointerBuffer &label_digest, u32 generation);
+            virtual Result UnwrapCommonTitleKey(sf::Out<AccessKey> out_access_key, KeySource key_source, u32 generation);
+            virtual Result ImportDrmKey(const sf::InPointerBuffer &src, AccessKey access_key, KeySource key_source);
+            virtual Result DrmExpMod(const sf::OutPointerBuffer &out, const sf::InPointerBuffer &base, const sf::InPointerBuffer &mod);
+            virtual Result UnwrapElicenseKey(sf::Out<AccessKey> out_access_key, const sf::InPointerBuffer &base, const sf::InPointerBuffer &mod, const sf::InPointerBuffer &label_digest, u32 generation);
+            virtual Result LoadElicenseKey(u32 keyslot, AccessKey access_key);
+        public:
+            DEFINE_SERVICE_DISPATCH_TABLE {
+                MAKE_SERVICE_COMMAND_META(GetConfig),
+                MAKE_SERVICE_COMMAND_META(ExpMod),
+                MAKE_SERVICE_COMMAND_META(SetConfig),
+                MAKE_SERVICE_COMMAND_META(GenerateRandomBytes),
+                MAKE_SERVICE_COMMAND_META(IsDevelopment),
+                MAKE_SERVICE_COMMAND_META(SetBootReason,                  hos::Version_300),
+                MAKE_SERVICE_COMMAND_META(GetBootReason,                  hos::Version_300),
+                MAKE_SERVICE_COMMAND_META(GenerateAesKek),
+                MAKE_SERVICE_COMMAND_META(LoadAesKey),
+                MAKE_SERVICE_COMMAND_META(GenerateAesKey),
+                MAKE_SERVICE_COMMAND_META(DecryptAesKey),
+                MAKE_SERVICE_COMMAND_META(CryptAesCtr),
+                MAKE_SERVICE_COMMAND_META(ComputeCmac),
+                MAKE_SERVICE_COMMAND_META(AllocateAesKeyslot,             hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(FreeAesKeyslot,                 hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(GetAesKeyslotAvailableEvent,    hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(DecryptRsaPrivateKeyDeprecated, hos::Version_400, hos::Version_400),
+                MAKE_SERVICE_COMMAND_META(DecryptRsaPrivateKey,           hos::Version_500),
+                MAKE_SERVICE_COMMAND_META(ImportEsKeyDeprecated,          hos::Version_400, hos::Version_400),
+                MAKE_SERVICE_COMMAND_META(ImportEsKey,                    hos::Version_500),
+                MAKE_SERVICE_COMMAND_META(UnwrapTitleKey),
+                MAKE_SERVICE_COMMAND_META(UnwrapCommonTitleKey,           hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(ImportDrmKey,                   hos::Version_500),
+                MAKE_SERVICE_COMMAND_META(DrmExpMod,                      hos::Version_500),
+                MAKE_SERVICE_COMMAND_META(UnwrapElicenseKey,              hos::Version_600),
+                MAKE_SERVICE_COMMAND_META(LoadElicenseKey,                hos::Version_600),
+            };
+    };
+
+}

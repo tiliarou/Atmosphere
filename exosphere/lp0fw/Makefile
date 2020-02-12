@@ -20,7 +20,7 @@ TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
 SOURCES		:=	src
 DATA		:=	data
-INCLUDES	:=	include ../../common/include
+INCLUDES	:=	include ../../libraries/libvapours/include
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -29,7 +29,7 @@ ARCH	:=	-march=armv4t -mtune=arm7tdmi -mthumb -mthumb-interwork
 
 CFLAGS	:= \
 		-g \
-		-O2 \
+		-Os \
 		-ffunction-sections \
 		-fdata-sections \
 		-fomit-frame-pointer \

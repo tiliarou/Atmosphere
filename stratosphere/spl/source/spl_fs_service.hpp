@@ -13,53 +13,48 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include <switch.h>
-#include <stratosphere.hpp>
-
-#include "spl_types.hpp"
 #include "spl_crypto_service.hpp"
 
-class FsService : public CryptoService {
-    public:
-        FsService(SecureMonitorWrapper *sw) : CryptoService(sw) {
-            /* ... */
-        }
+namespace ams::spl {
 
-        virtual ~FsService() {
-            /* ... */
-        }
-    protected:
-        /* Actual commands. */
-        virtual Result ImportLotusKey(InPointer<u8> src, AccessKey access_key, KeySource key_source, u32 option);
-        virtual Result DecryptLotusMessage(Out<u32> out_size, OutPointerWithClientSize<u8> out, InPointer<u8> base, InPointer<u8> mod, InPointer<u8> label_digest);
-        virtual Result GenerateSpecificAesKey(Out<AesKey> out_key, KeySource key_source, u32 generation, u32 which);
-        virtual Result LoadTitleKey(u32 keyslot, AccessKey access_key);
-        virtual Result GetPackage2Hash(OutPointerWithClientSize<u8> dst);
-    public:
-        DEFINE_SERVICE_DISPATCH_TABLE {
-            MakeServiceCommandMetaEx<Spl_Cmd_GetConfig, &FsService::GetConfig, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ExpMod, &FsService::ExpMod, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_SetConfig, &FsService::SetConfig, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateRandomBytes, &FsService::GenerateRandomBytes, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_IsDevelopment, &FsService::IsDevelopment, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_SetBootReason, &FsService::SetBootReason, FsService, FirmwareVersion_300>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GetBootReason, &FsService::GetBootReason, FsService, FirmwareVersion_300>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateAesKek, &FsService::GenerateAesKek, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_LoadAesKey, &FsService::LoadAesKey, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateAesKey, &FsService::GenerateAesKey, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_DecryptAesKey, &FsService::DecryptAesKey, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_CryptAesCtr, &FsService::CryptAesCtr, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ComputeCmac, &FsService::ComputeCmac, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_AllocateAesKeyslot, &FsService::AllocateAesKeyslot, FsService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_FreeAesKeyslot, &FsService::FreeAesKeyslot, FsService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GetAesKeyslotAvailableEvent, &FsService::GetAesKeyslotAvailableEvent, FsService, FirmwareVersion_200>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_ImportLotusKey, &FsService::ImportLotusKey, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_DecryptLotusMessage, &FsService::DecryptLotusMessage, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GenerateSpecificAesKey, &FsService::GenerateSpecificAesKey, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_LoadTitleKey, &FsService::LoadTitleKey, FsService>(),
-            MakeServiceCommandMetaEx<Spl_Cmd_GetPackage2Hash, &FsService::GetPackage2Hash, FsService, FirmwareVersion_500>(),
+    class FsService : public CryptoService {
+        public:
+            FsService() : CryptoService() { /* ... */ }
+            virtual ~FsService() { /* ... */ }
+        protected:
+            /* Actual commands. */
+            virtual Result ImportLotusKeyDeprecated(const sf::InPointerBuffer &src, AccessKey access_key, KeySource key_source, u32 option);
+            virtual Result ImportLotusKey(const sf::InPointerBuffer &src, AccessKey access_key, KeySource key_source);
+            virtual Result DecryptLotusMessage(sf::Out<u32> out_size, const sf::OutPointerBuffer &out, const sf::InPointerBuffer &base, const sf::InPointerBuffer &mod, const sf::InPointerBuffer &label_digest);
+            virtual Result GenerateSpecificAesKey(sf::Out<AesKey> out_key, KeySource key_source, u32 generation, u32 which);
+            virtual Result LoadTitleKey(u32 keyslot, AccessKey access_key);
+            virtual Result GetPackage2Hash(const sf::OutPointerBuffer &dst);
+        public:
+            DEFINE_SERVICE_DISPATCH_TABLE {
+                MAKE_SERVICE_COMMAND_META(GetConfig),
+                MAKE_SERVICE_COMMAND_META(ExpMod),
+                MAKE_SERVICE_COMMAND_META(SetConfig),
+                MAKE_SERVICE_COMMAND_META(GenerateRandomBytes),
+                MAKE_SERVICE_COMMAND_META(IsDevelopment),
+                MAKE_SERVICE_COMMAND_META(SetBootReason,               hos::Version_300),
+                MAKE_SERVICE_COMMAND_META(GetBootReason,               hos::Version_300),
+                MAKE_SERVICE_COMMAND_META(GenerateAesKek),
+                MAKE_SERVICE_COMMAND_META(LoadAesKey),
+                MAKE_SERVICE_COMMAND_META(GenerateAesKey),
+                MAKE_SERVICE_COMMAND_META(DecryptAesKey),
+                MAKE_SERVICE_COMMAND_META(CryptAesCtr),
+                MAKE_SERVICE_COMMAND_META(ComputeCmac),
+                MAKE_SERVICE_COMMAND_META(AllocateAesKeyslot,          hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(FreeAesKeyslot,              hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(GetAesKeyslotAvailableEvent, hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(ImportLotusKeyDeprecated,    hos::Version_400, hos::Version_400),
+                MAKE_SERVICE_COMMAND_META(ImportLotusKey,              hos::Version_500),
+                MAKE_SERVICE_COMMAND_META(DecryptLotusMessage),
+                MAKE_SERVICE_COMMAND_META(GenerateSpecificAesKey),
+                MAKE_SERVICE_COMMAND_META(LoadTitleKey),
+                MAKE_SERVICE_COMMAND_META(GetPackage2Hash,             hos::Version_500),
+            };
+    };
 
-        };
-};
+}

@@ -13,28 +13,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include <switch.h>
 #include <stratosphere.hpp>
 
-#include "spl_types.hpp"
-#include "spl_secmon_wrapper.hpp"
+namespace ams::spl {
 
-class RandomService final : public IServiceObject {
-    private:
-        SecureMonitorWrapper *secmon_wrapper;
-    public:
-        RandomService(SecureMonitorWrapper *sw) : secmon_wrapper(sw) {
-            /* ... */
-        }
+    class RandomService final : public sf::IServiceObject {
+        protected:
+            enum class CommandId {
+                GenerateRandomBytes = 0,
+            };
+        public:
+            RandomService() { /* ... */ }
+            virtual ~RandomService() { /* ... */ }
+        private:
+            /* Actual commands. */
+            virtual Result GenerateRandomBytes(const sf::OutBuffer &out);
+        public:
+            DEFINE_SERVICE_DISPATCH_TABLE {
+                MAKE_SERVICE_COMMAND_META(GenerateRandomBytes),
+            };
+    };
 
-        virtual ~RandomService() { /* ... */ }
-    private:
-        /* Actual commands. */
-        virtual Result GenerateRandomBytes(OutBuffer<u8> out);
-    public:
-        DEFINE_SERVICE_DISPATCH_TABLE {
-            MakeServiceCommandMeta<Csrng_Cmd_GenerateRandomBytes, &RandomService::GenerateRandomBytes>(),
-        };
-};
+}

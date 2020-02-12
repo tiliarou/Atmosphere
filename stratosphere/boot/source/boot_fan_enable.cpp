@@ -13,15 +13,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "boot_fan_enable.hpp"
 
-#include "boot_functions.hpp"
+#include "gpio/gpio_utils.hpp"
 
-static constexpr u32 GpioPadName_FanEnable = 0x4B;
+namespace ams::boot {
 
-void Boot::SetFanEnabled() {
-    if (Boot::GetHardwareType() == HardwareType_Copper) {
-        Boot::GpioConfigure(GpioPadName_FanEnable);
-        Boot::GpioSetDirection(GpioPadName_FanEnable, GpioDirection_Output);
-        Boot::GpioSetValue(GpioPadName_FanEnable, GpioValue_High);
+    namespace {
+
+        /* Convenience definitions. */
+        constexpr u32 GpioPadName_FanEnable = 0x4B;
+
     }
+
+    void SetFanEnabled() {
+        if (spl::GetHardwareType() == spl::HardwareType::Copper) {
+            gpio::Configure(GpioPadName_FanEnable);
+            gpio::SetDirection(GpioPadName_FanEnable, GpioDirection_Output);
+            gpio::SetValue(GpioPadName_FanEnable, GpioValue_High);
+        }
+    }
+
 }

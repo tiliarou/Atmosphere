@@ -13,11 +13,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include <switch.h>
-
-#include "boot_types.hpp"
+#include <stratosphere.hpp>
 
 static constexpr size_t CLK_RST_CONTROLLER_RST_SOURCE = 0x0;
 static constexpr size_t CLK_RST_CONTROLLER_RST_DEVICES_L = 0x4;

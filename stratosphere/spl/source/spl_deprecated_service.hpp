@@ -13,80 +13,117 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include <switch.h>
 #include <stratosphere.hpp>
 
-#include "spl_types.hpp"
-#include "spl_secmon_wrapper.hpp"
+namespace ams::spl {
 
-class DeprecatedService : public IServiceObject {
-    private:
-        SecureMonitorWrapper *secmon_wrapper;
-    public:
-        DeprecatedService(SecureMonitorWrapper *sw) : secmon_wrapper(sw) {
-            /* ... */
-        }
+    class DeprecatedService : public sf::IServiceObject {
+        protected:
+            enum class CommandId {
+                /* 1.0.0+ */
+                GetConfig                      = 0,
+                ExpMod                         = 1,
+                GenerateAesKek                 = 2,
+                LoadAesKey                     = 3,
+                GenerateAesKey                 = 4,
+                SetConfig                      = 5,
+                GenerateRandomBytes            = 7,
+                ImportLotusKey                 = 9,
+                DecryptLotusMessage            = 10,
+                IsDevelopment                  = 11,
+                GenerateSpecificAesKey         = 12,
+                DecryptRsaPrivateKeyDeprecated = 13,
+                DecryptRsaPrivateKey           = 13,
+                DecryptAesKey                  = 14,
+                CryptAesCtrDeprecated          = 15,
+                CryptAesCtr                    = 15,
+                ComputeCmac                    = 16,
+                ImportEsKey                    = 17,
+                UnwrapTitleKeyDeprecated       = 18,
+                UnwrapTitleKey                 = 18,
+                LoadTitleKey                   = 19,
 
-        virtual ~DeprecatedService() { /* ... */ }
-    protected:
-        SecureMonitorWrapper *GetSecureMonitorWrapper() const {
-            return this->secmon_wrapper;
-        }
-    protected:
-        /* Actual commands. */
-        virtual Result GetConfig(Out<u64> out, u32 which);
-        virtual Result ExpMod(OutPointerWithClientSize<u8> out, InPointer<u8> base, InPointer<u8> exp, InPointer<u8> mod);
-        virtual Result GenerateAesKek(Out<AccessKey> out_access_key, KeySource key_source, u32 generation, u32 option);
-        virtual Result LoadAesKey(u32 keyslot, AccessKey access_key, KeySource key_source);
-        virtual Result GenerateAesKey(Out<AesKey> out_key, AccessKey access_key, KeySource key_source);
-        virtual Result SetConfig(u32 which, u64 value);
-        virtual Result GenerateRandomBytes(OutPointerWithClientSize<u8> out);
-        virtual Result ImportLotusKey(InPointer<u8> src, AccessKey access_key, KeySource key_source, u32 option);
-        virtual Result DecryptLotusMessage(Out<u32> out_size, OutPointerWithClientSize<u8> out, InPointer<u8> base, InPointer<u8> mod, InPointer<u8> label_digest);
-        virtual Result IsDevelopment(Out<bool> is_dev);
-        virtual Result GenerateSpecificAesKey(Out<AesKey> out_key, KeySource key_source, u32 generation, u32 which);
-        virtual Result DecryptRsaPrivateKey(OutPointerWithClientSize<u8> dst, InPointer<u8> src, AccessKey access_key, KeySource key_source, u32 option);
-        virtual Result DecryptAesKey(Out<AesKey> out_key, KeySource key_source, u32 generation, u32 option);
-        virtual Result CryptAesCtrDeprecated(OutBuffer<u8> out_buf, u32 keyslot, InBuffer<u8> in_buf, IvCtr iv_ctr);
-        virtual Result CryptAesCtr(OutBuffer<u8, BufferType_Type1> out_buf, u32 keyslot, InBuffer<u8, BufferType_Type1> in_buf, IvCtr iv_ctr);
-        virtual Result ComputeCmac(Out<Cmac> out_cmac, u32 keyslot, InPointer<u8> in_buf);
-        virtual Result ImportEsKey(InPointer<u8> src, AccessKey access_key, KeySource key_source, u32 option);
-        virtual Result UnwrapTitleKey(Out<AccessKey> out_access_key, InPointer<u8> base, InPointer<u8> mod, InPointer<u8> label_digest, u32 generation);
-        virtual Result LoadTitleKey(u32 keyslot, AccessKey access_key);
-        virtual Result UnwrapCommonTitleKey(Out<AccessKey> out_access_key, KeySource key_source, u32 generation);
-        virtual Result AllocateAesKeyslot(Out<u32> out_keyslot);
-        virtual Result FreeAesKeyslot(u32 keyslot);
-        virtual void GetAesKeyslotAvailableEvent(Out<CopiedHandle> out_hnd);
-        virtual Result SetBootReason(BootReasonValue boot_reason);
-        virtual Result GetBootReason(Out<BootReasonValue> out);
-    public:
-        DEFINE_SERVICE_DISPATCH_TABLE {
-            MakeServiceCommandMeta<Spl_Cmd_GetConfig, &DeprecatedService::GetConfig>(),
-            MakeServiceCommandMeta<Spl_Cmd_ExpMod, &DeprecatedService::ExpMod>(),
-            MakeServiceCommandMeta<Spl_Cmd_GenerateAesKek, &DeprecatedService::GenerateAesKek>(),
-            MakeServiceCommandMeta<Spl_Cmd_LoadAesKey, &DeprecatedService::LoadAesKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_GenerateAesKey, &DeprecatedService::GenerateAesKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_SetConfig, &DeprecatedService::SetConfig>(),
-            MakeServiceCommandMeta<Spl_Cmd_GenerateRandomBytes, &DeprecatedService::GenerateRandomBytes>(),
-            MakeServiceCommandMeta<Spl_Cmd_ImportLotusKey, &DeprecatedService::ImportLotusKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_DecryptLotusMessage, &DeprecatedService::DecryptLotusMessage>(),
-            MakeServiceCommandMeta<Spl_Cmd_IsDevelopment, &DeprecatedService::IsDevelopment>(),
-            MakeServiceCommandMeta<Spl_Cmd_GenerateSpecificAesKey, &DeprecatedService::GenerateSpecificAesKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_DecryptRsaPrivateKey, &DeprecatedService::DecryptRsaPrivateKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_DecryptAesKey, &DeprecatedService::DecryptAesKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_CryptAesCtr, &DeprecatedService::CryptAesCtrDeprecated, FirmwareVersion_100, FirmwareVersion_100>(),
-            MakeServiceCommandMeta<Spl_Cmd_CryptAesCtr, &DeprecatedService::CryptAesCtr, FirmwareVersion_200>(),
-            MakeServiceCommandMeta<Spl_Cmd_ComputeCmac, &DeprecatedService::ComputeCmac>(),
-            MakeServiceCommandMeta<Spl_Cmd_ImportEsKey, &DeprecatedService::ImportEsKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_UnwrapTitleKey, &DeprecatedService::UnwrapTitleKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_LoadTitleKey, &DeprecatedService::LoadTitleKey>(),
-            MakeServiceCommandMeta<Spl_Cmd_UnwrapCommonTitleKey, &DeprecatedService::UnwrapCommonTitleKey, FirmwareVersion_200>(),
-            MakeServiceCommandMeta<Spl_Cmd_AllocateAesKeyslot, &DeprecatedService::AllocateAesKeyslot, FirmwareVersion_200>(),
-            MakeServiceCommandMeta<Spl_Cmd_FreeAesKeyslot, &DeprecatedService::FreeAesKeyslot, FirmwareVersion_200>(),
-            MakeServiceCommandMeta<Spl_Cmd_GetAesKeyslotAvailableEvent, &DeprecatedService::GetAesKeyslotAvailableEvent, FirmwareVersion_200>(),
-            MakeServiceCommandMeta<Spl_Cmd_SetBootReason, &DeprecatedService::SetBootReason, FirmwareVersion_300>(),
-            MakeServiceCommandMeta<Spl_Cmd_GetBootReason, &DeprecatedService::GetBootReason, FirmwareVersion_300>(),
-        };
-};
+                /* 2.0.0+ */
+                UnwrapCommonTitleKeyDeprecated = 20,
+                UnwrapCommonTitleKey           = 20,
+                AllocateAesKeyslot             = 21,
+                FreeAesKeyslot                 = 22,
+                GetAesKeyslotAvailableEvent    = 23,
+
+                /* 3.0.0+ */
+                SetBootReason                  = 24,
+                GetBootReason                  = 25,
+            };
+        public:
+            DeprecatedService() { /* ... */ }
+            virtual ~DeprecatedService() { /* ... */ }
+        protected:
+            /* Actual commands. */
+            virtual Result GetConfig(sf::Out<u64> out, u32 which);
+            virtual Result ExpMod(const sf::OutPointerBuffer &out, const sf::InPointerBuffer &base, const sf::InPointerBuffer &exp, const sf::InPointerBuffer &mod);
+            virtual Result GenerateAesKek(sf::Out<AccessKey> out_access_key, KeySource key_source, u32 generation, u32 option);
+            virtual Result LoadAesKey(u32 keyslot, AccessKey access_key, KeySource key_source);
+            virtual Result GenerateAesKey(sf::Out<AesKey> out_key, AccessKey access_key, KeySource key_source);
+            virtual Result SetConfig(u32 which, u64 value);
+            virtual Result GenerateRandomBytes(const sf::OutPointerBuffer &out);
+            virtual Result ImportLotusKey(const sf::InPointerBuffer &src, AccessKey access_key, KeySource key_source, u32 option);
+            virtual Result DecryptLotusMessage(sf::Out<u32> out_size, const sf::OutPointerBuffer &out, const sf::InPointerBuffer &base, const sf::InPointerBuffer &mod, const sf::InPointerBuffer &label_digest);
+            virtual Result IsDevelopment(sf::Out<bool> is_dev);
+            virtual Result GenerateSpecificAesKey(sf::Out<AesKey> out_key, KeySource key_source, u32 generation, u32 which);
+            virtual Result DecryptRsaPrivateKey(const sf::OutPointerBuffer &dst, const sf::InPointerBuffer &src, AccessKey access_key, KeySource key_source, u32 option);
+            virtual Result DecryptAesKey(sf::Out<AesKey> out_key, KeySource key_source, u32 generation, u32 option);
+            virtual Result CryptAesCtrDeprecated(const sf::OutBuffer &out_buf, u32 keyslot, const sf::InBuffer &in_buf, IvCtr iv_ctr);
+            virtual Result CryptAesCtr(const sf::OutNonSecureBuffer &out_buf, u32 keyslot, const sf::InNonSecureBuffer &in_buf, IvCtr iv_ctr);
+            virtual Result ComputeCmac(sf::Out<Cmac> out_cmac, u32 keyslot, const sf::InPointerBuffer &in_buf);
+            virtual Result ImportEsKey(const sf::InPointerBuffer &src, AccessKey access_key, KeySource key_source, u32 option);
+            virtual Result UnwrapTitleKeyDeprecated(sf::Out<AccessKey> out_access_key, const sf::InPointerBuffer &base, const sf::InPointerBuffer &mod, const sf::InPointerBuffer &label_digest);
+            virtual Result UnwrapTitleKey(sf::Out<AccessKey> out_access_key, const sf::InPointerBuffer &base, const sf::InPointerBuffer &mod, const sf::InPointerBuffer &label_digest, u32 generation);
+            virtual Result LoadTitleKey(u32 keyslot, AccessKey access_key);
+            virtual Result UnwrapCommonTitleKeyDeprecated(sf::Out<AccessKey> out_access_key, KeySource key_source);
+            virtual Result UnwrapCommonTitleKey(sf::Out<AccessKey> out_access_key, KeySource key_source, u32 generation);
+            virtual Result AllocateAesKeyslot(sf::Out<u32> out_keyslot);
+            virtual Result FreeAesKeyslot(u32 keyslot);
+            virtual void GetAesKeyslotAvailableEvent(sf::OutCopyHandle out_hnd);
+            virtual Result SetBootReason(BootReasonValue boot_reason);
+            virtual Result GetBootReason(sf::Out<BootReasonValue> out);
+        public:
+            DEFINE_SERVICE_DISPATCH_TABLE {
+                MAKE_SERVICE_COMMAND_META(GetConfig),
+                MAKE_SERVICE_COMMAND_META(ExpMod),
+                MAKE_SERVICE_COMMAND_META(GenerateAesKek),
+                MAKE_SERVICE_COMMAND_META(LoadAesKey),
+                MAKE_SERVICE_COMMAND_META(GenerateAesKey),
+                MAKE_SERVICE_COMMAND_META(SetConfig),
+                MAKE_SERVICE_COMMAND_META(GenerateRandomBytes),
+                MAKE_SERVICE_COMMAND_META(ImportLotusKey),
+                MAKE_SERVICE_COMMAND_META(DecryptLotusMessage),
+                MAKE_SERVICE_COMMAND_META(IsDevelopment),
+                MAKE_SERVICE_COMMAND_META(GenerateSpecificAesKey),
+                MAKE_SERVICE_COMMAND_META(DecryptRsaPrivateKey),
+                MAKE_SERVICE_COMMAND_META(DecryptAesKey),
+
+                MAKE_SERVICE_COMMAND_META(CryptAesCtrDeprecated,          hos::Version_100, hos::Version_100),
+                MAKE_SERVICE_COMMAND_META(CryptAesCtr,                    hos::Version_200),
+
+                MAKE_SERVICE_COMMAND_META(ComputeCmac),
+                MAKE_SERVICE_COMMAND_META(ImportEsKey),
+
+                MAKE_SERVICE_COMMAND_META(UnwrapTitleKeyDeprecated,       hos::Version_100, hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(UnwrapTitleKey,                 hos::Version_300),
+
+                MAKE_SERVICE_COMMAND_META(LoadTitleKey),
+
+                MAKE_SERVICE_COMMAND_META(UnwrapCommonTitleKeyDeprecated, hos::Version_200, hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(UnwrapCommonTitleKey,           hos::Version_300),
+
+                MAKE_SERVICE_COMMAND_META(AllocateAesKeyslot,             hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(FreeAesKeyslot,                 hos::Version_200),
+                MAKE_SERVICE_COMMAND_META(GetAesKeyslotAvailableEvent,    hos::Version_200),
+
+                MAKE_SERVICE_COMMAND_META(SetBootReason,                  hos::Version_300),
+                MAKE_SERVICE_COMMAND_META(GetBootReason,                  hos::Version_300),
+            };
+    };
+
+}

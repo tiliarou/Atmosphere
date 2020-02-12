@@ -13,44 +13,48 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
-#include <cstdlib>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <malloc.h>
-
-#include <switch.h>
-#include <stratosphere/firmware_version.hpp>
-
 #include "creport_crash_report.hpp"
+#include "creport_utils.hpp"
 
 
 extern "C" {
     extern u32 __start__;
 
     u32 __nx_applet_type = AppletType_None;
+    u32 __nx_fs_num_sessions = 1;
+    u32 __nx_fsdev_direntry_cache_size = 1;
 
-    #define INNER_HEAP_SIZE 0x100000
+    #define INNER_HEAP_SIZE 0x4000
     size_t nx_inner_heap_size = INNER_HEAP_SIZE;
     char   nx_inner_heap[INNER_HEAP_SIZE];
-    
+
     void __libnx_initheap(void);
     void __appInit(void);
     void __appExit(void);
 
     /* Exception handling. */
-    alignas(16) u8 __nx_exception_stack[0x1000];
+    alignas(16) u8 __nx_exception_stack[ams::os::MemoryPageSize];
     u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
     void __libnx_exception_handler(ThreadExceptionDump *ctx);
-    u64 __stratosphere_title_id = TitleId_Creport;
-    void __libstratosphere_exception_handler(AtmosphereFatalErrorContext *ctx);
 }
+
+namespace ams {
+
+    ncm::ProgramId CurrentProgramId = ncm::ProgramId::Creport;
+
+    namespace result {
+
+        bool CallFatalOnResultAssertion = true;
+
+    }
+
+}
+
+using namespace ams;
 
 void __libnx_exception_handler(ThreadExceptionDump *ctx) {
-    StratosphereCrashHandler(ctx);
+    ams::CrashHandler(ctx);
 }
-
 
 void __libnx_initheap(void) {
 	void*  addr = nx_inner_heap;
@@ -65,21 +69,13 @@ void __libnx_initheap(void) {
 }
 
 void __appInit(void) {
-    Result rc;
-    
-    SetFirmwareVersionForLibnx();
-    
-    DoWithSmSession([&]() {
-        rc = fsInitialize();
-        if (R_FAILED(rc)) {
-            fatalSimple(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
-        }
+    hos::SetVersionForLibnx();
+
+    sm::DoWithSession([&]() {
+        R_ASSERT(fsInitialize());
     });
-    
-    rc = fsdevMountSdmc();
-    if (R_FAILED(rc)) {
-        fatalSimple(MAKERESULT(Module_Libnx, LibnxError_InitFail_FS));
-    }
+
+    R_ASSERT(fsdevMountSdmc());
 }
 
 void __appExit(void) {
@@ -88,65 +84,55 @@ void __appExit(void) {
     fsExit();
 }
 
-static u64 creport_parse_u64(char *s) {
-    /* Official creport uses this custom parsing logic... */
-    u64 out_val = 0;
-    for (unsigned int i = 0; i < 20 && s[i]; i++) {
-        if ('0' <= s[i] && s[i] <= '9') {
-            out_val *= 10;
-            out_val += (s[i] - '0');
-        } else {
-            break;
-        }
-    }
-    return out_val;
-}
-
-static CrashReport g_Creport;
+static creport::CrashReport g_crash_report;
 
 int main(int argc, char **argv) {
     /* Validate arguments. */
     if (argc < 2) {
-        return 0;
+        return EXIT_FAILURE;
     }
     for (int i = 0; i < argc; i++) {
         if (argv[i] == NULL) {
-            return 0;
+            return EXIT_FAILURE;
         }
     }
-    
+
     /* Parse crashed PID. */
-    u64 crashed_pid = creport_parse_u64(argv[0]);
-    
+    os::ProcessId crashed_pid = creport::ParseProcessIdArgument(argv[0]);
+
     /* Try to debug the crashed process. */
-    g_Creport.BuildReport(crashed_pid, argv[1][0] == '1');
-    if (g_Creport.WasSuccessful()) {
-        g_Creport.SaveReport();
-        
-        DoWithSmSession([&]() {
-            if (R_SUCCEEDED(nsdevInitialize())) {
-                nsdevTerminateProcess(crashed_pid);
-                nsdevExit();
-            }
-        });
-        
-        /* Don't fatal if we have extra info. */
-        if ((GetRuntimeFirmwareVersion() >= FirmwareVersion_500)) {
-            if (g_Creport.IsApplication()) {
-                return 0;
-            }
-        } else if (argv[1][0] == '1') {
-            return 0;
-        }
-        
-        /* Also don't fatal if we're a user break. */
-        if (g_Creport.IsUserBreak()) {
-            return 0;
-        }
-        
-        FatalContext *ctx = g_Creport.GetFatalContext();
-        
-        fatalWithContext(g_Creport.GetResult(), FatalType_ErrorScreen, ctx);
+    g_crash_report.BuildReport(crashed_pid, argv[1][0] == '1');
+    if (!g_crash_report.IsComplete()) {
+        return EXIT_FAILURE;
     }
-    
+
+    /* Save report to file. */
+    g_crash_report.SaveReport();
+
+    /* Try to terminate the process. */
+    {
+        sm::ScopedServiceHolder<nsdevInitialize, nsdevExit> ns_holder;
+        if (ns_holder) {
+            nsdevTerminateProcess(static_cast<u64>(crashed_pid));
+        }
+    }
+
+    /* Don't fatal if we have extra info, or if we're 5.0.0+ and an application crashed. */
+    if (hos::GetVersion() >= hos::Version_500) {
+        if (g_crash_report.IsApplication()) {
+            return EXIT_SUCCESS;
+        }
+    } else if (argv[1][0] == '1') {
+        return EXIT_SUCCESS;
+    }
+
+    /* Also don't fatal if we're a user break. */
+    if (g_crash_report.IsUserBreak()) {
+        return EXIT_SUCCESS;
+    }
+
+    /* Throw fatal error. */
+    ::FatalCpuContext ctx;
+    g_crash_report.GetFatalContext(&ctx);
+    fatalThrowWithContext(g_crash_report.GetResult().GetValue(), FatalPolicy_ErrorScreen, &ctx);
 }

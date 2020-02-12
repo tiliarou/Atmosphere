@@ -13,8 +13,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <atmosphere/version.h>
- 
+#include <vapours/ams_version.h>
+
 .macro CLEAR_GPR_REG_ITER
     mov r\@, #0
 .endm
@@ -27,7 +27,7 @@
 .type   _start, %function
 _start:
     b _crt0
-    
+
 .word (_metadata - _start)
 
 _crt0:
@@ -67,7 +67,7 @@ _crt0:
     ldr r0, [r0]
     ldr r1, [r1]
     b   main
-    
+
 /* Fusee-secondary header. */
 .align 5
 _metadata:
@@ -93,6 +93,9 @@ _metadata:
 #define CONTENT_TYPE_SP2 5
 #define CONTENT_TYPE_KIP 6
 #define CONTENT_TYPE_BMP 7
+#define CONTENT_TYPE_EMC 8
+#define CONTENT_TYPE_KLD 9
+#define CONTENT_TYPE_KRN 10
 
 _content_headers:
 /* ams_mitm content header */
@@ -167,12 +170,20 @@ _content_headers:
 .asciz "sept_primary"
 .align 5
 
-/* sept_secondary content header */
-.word __sept_secondary_enc_start__
-.word __sept_secondary_enc_size__
+/* sept_secondary 00 content header */
+.word __sept_secondary_00_enc_start__
+.word __sept_secondary_00_enc_size__
 .word CONTENT_TYPE_SP2
 .word 0xCCCCCCCC
-.asciz "sept_secondary"
+.asciz "septsecondary00"
+.align 5
+
+/* sept_secondary 01 content header */
+.word __sept_secondary_01_enc_start__
+.word __sept_secondary_01_enc_size__
+.word CONTENT_TYPE_SP2
+.word 0xCCCCCCCC
+.asciz "septsecondary01"
 .align 5
 
 /* sm content header */
@@ -189,6 +200,22 @@ _content_headers:
 .word CONTENT_TYPE_KIP
 .word 0xCCCCCCCC
 .asciz "spl"
+.align 5
+
+/* emummc content header */
+.word __emummc_kip_start__
+.word __emummc_kip_size__
+.word CONTENT_TYPE_EMC
+.word 0xCCCCCCCC
+.asciz "emummc"
+.align 5
+
+/* kernel_ldr content header */
+.word __kernel_ldr_bin_start__
+.word __kernel_ldr_bin_size__
+.word CONTENT_TYPE_KLD
+.word 0xCCCCCCCC
+.asciz "kernel_ldr"
 .align 5
 
 /* splash_screen content header */

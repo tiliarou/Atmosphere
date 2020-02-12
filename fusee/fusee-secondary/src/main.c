@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,13 +26,11 @@
 #include "loader.h"
 #include "chainloader.h"
 #include "stage2.h"
-#include "mtc.h"
 #include "nxboot.h"
 #include "console.h"
 #include "fs_utils.h"
 #include "nxfs.h"
 #include "gpt.h"
-#include "splash_screen.h"
 #include "display/video_fb.h"
 #include "sdmmc/sdmmc.h"
 #include "lib/log.h"
@@ -44,26 +42,23 @@ static stage2_args_t *g_stage2_args;
 static bool g_do_nxboot;
 
 static void setup_env(void) {
-    /* Set the console up. */
-    if (console_init(g_stage2_args->display_initialized) == -1) {
+    /* Initialize the display and console. */
+    if (console_init() < 0) {
         generic_panic();
     }
 
     /* Set up exception handlers. */
     setup_exception_handlers();
 
-    if (nxfs_mount_all() < 0) {
-        fatal_error("Failed to mount at least one parition: %s\n", strerror(errno));
+    /* Initialize the file system by mounting the SD card. */
+    if (nxfs_init() < 0) {
+        fatal_error("Failed to initialize the file system: %s\n", strerror(errno));
     }
-    
-    /* Train DRAM. */
-    train_dram();
 }
 
-
 static void cleanup_env(void) {
-    /* Unmount everything (this causes all open files to be flushed and closed) */
-    nxfs_unmount_all();
+    /* Terminate the file system. */
+    nxfs_end();
 }
 
 static void exit_callback(int rc) {
@@ -81,30 +76,32 @@ static void exit_callback(int rc) {
 int main(int argc, void **argv) {
     loader_ctx_t *loader_ctx = get_loader_ctx();
 
+    /* Check argc. */
     if (argc != STAGE2_ARGC) {
         generic_panic();
     }
-    
+
     g_stage2_args = &g_stage2_args_store;
     memcpy(g_stage2_args, (stage2_args_t *)argv[STAGE2_ARGV_ARGUMENT_STRUCT], sizeof(*g_stage2_args));
 
+    /* Check stage2 version field. */
     if (g_stage2_args->version != 0) {
         generic_panic();
     }
-    
+
     /* Override the global logging level. */
     log_set_log_level(g_stage2_args->log_level);
-    
-    /* Initialize the display, console, FS, etc. */
+
+    /* Initialize the boot environment. */
     setup_env();
 
     print(SCREEN_LOG_LEVEL_DEBUG | SCREEN_LOG_LEVEL_NO_PREFIX, u8"Welcome to Atmosphère Fusée Stage 2!\n");
     print(SCREEN_LOG_LEVEL_DEBUG, "Stage 2 executing from: %s\n", (const char *)argv[STAGE2_ARGV_PROGRAM_PATH]);
-    
+
     /* Load BCT0 from SD if needed. */
     if (strcmp(g_stage2_args->bct0, "") == 0) {
         uint32_t bct_tmp_buf[sizeof(g_stage2_args->bct0) / sizeof(uint32_t)] = {0};
-        if (!read_from_file(bct_tmp_buf, sizeof(bct_tmp_buf) - 1, "atmosphere/BCT.ini")) {
+        if (!read_from_file(bct_tmp_buf, sizeof(bct_tmp_buf) - 1, "atmosphere/config/BCT.ini")) {
             fatal_error("Failed to read BCT0 from SD!\n");
         }
         memcpy(g_stage2_args->bct0, bct_tmp_buf, sizeof(bct_tmp_buf));
@@ -112,29 +109,30 @@ int main(int argc, void **argv) {
 
     /* This will load all remaining binaries off of the SD. */
     load_payload(g_stage2_args->bct0);
-
     print(SCREEN_LOG_LEVEL_INFO, "Loaded payloads!\n");
 
-    g_do_nxboot = loader_ctx->chainload_entrypoint == 0;
+    g_do_nxboot = (loader_ctx->chainload_entrypoint == 0);
     if (g_do_nxboot) {
         print(SCREEN_LOG_LEVEL_INFO, "Now performing nxboot.\n");
+
+        /* Start boot. */
         uint32_t boot_memaddr = nxboot_main();
-        /* Wait for the splash screen to have been displayed as long as it should be. */
-        splash_screen_wait_delay();
-        /* Cleanup environment. */
+
+        /* Terminate the boot environment. */
         cleanup_env();
+
         /* Finish boot. */
         nxboot_finish(boot_memaddr);
     } else {
         /* TODO: What else do we want to do in terms of argc/argv? */
         const char *path = get_loader_ctx()->file_paths_to_load[get_loader_ctx()->file_id_of_entrypoint];
-        print(SCREEN_LOG_LEVEL_MANDATORY, "Now chainloading.\n");
+        print(SCREEN_LOG_LEVEL_INFO, "Now chainloading.\n");
         g_chainloader_argc = 1;
         strcpy(g_chainloader_arg_data, path);
-    }
 
-    /* Deinitialize the display, console, FS, etc. */
-    cleanup_env();
+        /* Terminate the boot environment. */
+        cleanup_env();
+    }
 
     /* Finally, after the cleanup routines (__libc_fini_array, etc.) are called, chainload or halt ourselves. */
     __program_exit_callback = exit_callback;

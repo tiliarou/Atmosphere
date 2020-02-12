@@ -13,25 +13,30 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "boot_boot_reason.hpp"
+#include "boot_change_voltage.hpp"
+#include "boot_check_battery.hpp"
+#include "boot_check_clock.hpp"
+#include "boot_clock_initial_configuration.hpp"
+#include "boot_fan_enable.hpp"
+#include "boot_repair_boot_images.hpp"
+#include "boot_splash_screen.hpp"
+#include "boot_wake_pins.hpp"
 
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <malloc.h>
+#include "gpio/gpio_initial_configuration.hpp"
+#include "pinmux/pinmux_initial_configuration.hpp"
 
-#include <switch.h>
-#include <atmosphere.h>
-#include <stratosphere.hpp>
+#include "boot_power_utils.hpp"
 
-#include "boot_functions.hpp"
-#include "boot_reboot_manager.hpp"
+using namespace ams;
 
 extern "C" {
     extern u32 __start__;
 
     u32 __nx_applet_type = AppletType_None;
 
-    #define INNER_HEAP_SIZE 0x200000
+    /* TODO: Evaluate to what extent this can be reduced further. */
+    #define INNER_HEAP_SIZE 0x20000
     size_t nx_inner_heap_size = INNER_HEAP_SIZE;
     char   nx_inner_heap[INNER_HEAP_SIZE];
 
@@ -40,20 +45,32 @@ extern "C" {
     void __appExit(void);
 
     /* Exception handling. */
-    alignas(16) u8 __nx_exception_stack[0x1000];
+    alignas(16) u8 __nx_exception_stack[ams::os::MemoryPageSize];
     u64 __nx_exception_stack_size = sizeof(__nx_exception_stack);
     void __libnx_exception_handler(ThreadExceptionDump *ctx);
-    u64 __stratosphere_title_id = TitleId_Boot;
-    void __libstratosphere_exception_handler(AtmosphereFatalErrorContext *ctx);
 }
+
+namespace ams {
+
+    ncm::ProgramId CurrentProgramId = ncm::ProgramId::Boot;
+
+    void ExceptionHandler(FatalErrorContext *ctx) {
+        /* We're boot sysmodule, so manually reboot to fatal error. */
+        boot::RebootForFatalError(ctx);
+    }
+
+    namespace result {
+
+        bool CallFatalOnResultAssertion = false;
+
+    }
+
+}
+
+using namespace ams;
 
 void __libnx_exception_handler(ThreadExceptionDump *ctx) {
-    StratosphereCrashHandler(ctx);
-}
-
-void __libstratosphere_exception_handler(AtmosphereFatalErrorContext *ctx) {
-    /* We're boot sysmodule, so manually reboot to fatal error. */
-    BootRebootManager::RebootForFatalError(ctx);
+    ams::CrashHandler(ctx);
 }
 
 void __libnx_initheap(void) {
@@ -69,29 +86,16 @@ void __libnx_initheap(void) {
 }
 
 void __appInit(void) {
-    Result rc;
-
-    SetFirmwareVersionForLibnx();
+    hos::SetVersionForLibnx();
 
     /* Initialize services we need (TODO: NCM) */
-    DoWithSmSession([&]() {
-        rc = fsInitialize();
-        if (R_FAILED(rc)) {
-            std::abort();
-        }
-
-        rc = splInitialize();
-        if (R_FAILED(rc)) {
-            std::abort();
-        }
-
-        rc = pmshellInitialize();
-        if (R_FAILED(rc)) {
-            std::abort();
-        }
+    sm::DoWithSession([&]() {
+        R_ASSERT(fsInitialize());
+        R_ASSERT(splInitialize());
+        R_ASSERT(pmshellInitialize());
     });
 
-    CheckAtmosphereVersion(CURRENT_ATMOSPHERE_VERSION);
+    ams::CheckApiVersion();
 }
 
 void __appExit(void) {
@@ -104,50 +108,46 @@ void __appExit(void) {
 
 int main(int argc, char **argv)
 {
-    consoleDebugInit(debugDevice_SVC);
-
     /* Change voltage from 3.3v to 1.8v for select devices. */
-    Boot::ChangeGpioVoltageTo1_8v();
+    boot::ChangeGpioVoltageTo1_8v();
 
     /* Setup GPIO. */
-    Boot::SetInitialGpioConfiguration();
+    gpio::SetInitialConfiguration();
 
     /* Check USB PLL/UTMIP clock. */
-    Boot::CheckClock();
+    boot::CheckClock();
 
     /* Talk to PMIC/RTC, set boot reason with SPL. */
-    Boot::DetectBootReason();
+    boot::DetectBootReason();
 
-    const HardwareType hw_type = Boot::GetHardwareType();
-    if (hw_type != HardwareType_Copper) {
+    const auto hw_type = spl::GetHardwareType();
+    if (hw_type != spl::HardwareType::Copper) {
         /* Display splash screen for two seconds. */
-        Boot::ShowSplashScreen();
+        boot::ShowSplashScreen();
 
         /* Check that the battery has enough to boot. */
-        Boot::CheckBatteryCharge();
+        boot::CheckBatteryCharge();
     }
 
     /* Configure pinmux + drive pads. */
-    Boot::ConfigurePinmux();
+    pinmux::SetInitialConfiguration();
 
     /* Configure the PMC wake pin settings. */
-    Boot::SetInitialWakePinConfiguration();
+    boot::SetInitialWakePinConfiguration();
 
     /* Configure output clock. */
-    if (hw_type != HardwareType_Copper) {
-        Boot::SetInitialClockConfiguration();
+    if (hw_type != spl::HardwareType::Copper) {
+        boot::SetInitialClockConfiguration();
     }
 
     /* Set Fan enable config (Copper only). */
-    Boot::SetFanEnabled();
+    boot::SetFanEnabled();
 
     /* Repair boot partitions in NAND if needed. */
-    Boot::CheckAndRepairBootImages();
+    boot::CheckAndRepairBootImages();
 
     /* Tell PM to start boot2. */
-    if (R_FAILED(pmshellNotifyBootFinished())) {
-        std::abort();
-    }
+    R_ASSERT(pmshellNotifyBootFinished());
 
     return 0;
 }

@@ -13,45 +13,39 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include "boot_pmc_wrapper.hpp"
 
-#include "boot_functions.hpp"
+namespace ams::boot {
 
-static constexpr u32 SmcFunctionId_AtmosphereReadWriteRegister = 0xF0000002;
+    namespace {
 
-static constexpr u32 PmcPhysStart = 0x7000E400;
-static constexpr u32 PmcPhysEnd = 0x7000EFFF;
+        /* Convenience definitions. */
+        constexpr u32 SmcFunctionId_AtmosphereReadWriteRegister = 0xF0000002;
 
-static inline bool IsValidPmcAddress(u32 phys_addr) {
-    return (phys_addr & 3) == 0 && PmcPhysStart <= phys_addr && phys_addr <= PmcPhysEnd;
-}
+        constexpr u32 PmcPhysStart = 0x7000E400;
+        constexpr u32 PmcPhysEnd = 0x7000EFFF;
 
-static inline u32 SmcAtmosphereReadWriteRegister(u32 phys_addr, u32 value, u32 mask) {
-    SecmonArgs args;
+        /* Helpers. */
+        bool IsValidPmcAddress(u32 phys_addr) {
+            return (phys_addr & 3) == 0 && PmcPhysStart <= phys_addr && phys_addr <= PmcPhysEnd;
+        }
 
-    args.X[0] = SmcFunctionId_AtmosphereReadWriteRegister;
-    args.X[1] = phys_addr;
-    args.X[2] = mask;
-    args.X[3] = value;
-    svcCallSecureMonitor(&args);
-    if (args.X[0] != 0) {
-        std::abort();
+        inline u32 ReadWriteRegisterImpl(uintptr_t phys_addr, u32 value, u32 mask) {
+            u32 out_value;
+            R_ASSERT(spl::smc::ConvertResult(spl::smc::AtmosphereReadWriteRegister(phys_addr, mask, value, &out_value)));
+            return out_value;
+        }
+
     }
 
-    return static_cast<u32>(args.X[1]);
-}
-
-u32 Boot::ReadPmcRegister(u32 phys_addr) {
-    if (!IsValidPmcAddress(phys_addr)) {
-        std::abort();
+    u32 ReadPmcRegister(u32 phys_addr) {
+        AMS_ASSERT(IsValidPmcAddress(phys_addr));
+        return ReadWriteRegisterImpl(phys_addr, 0, 0);
     }
 
-    return SmcAtmosphereReadWriteRegister(phys_addr, 0, 0);
-}
-
-void Boot::WritePmcRegister(u32 phys_addr, u32 value, u32 mask) {
-    if (!IsValidPmcAddress(phys_addr)) {
-        std::abort();
+    void WritePmcRegister(u32 phys_addr, u32 value, u32 mask) {
+        AMS_ASSERT(IsValidPmcAddress(phys_addr));
+        ReadWriteRegisterImpl(phys_addr, value, mask);
     }
 
-    SmcAtmosphereReadWriteRegister(phys_addr, value, mask);
 }

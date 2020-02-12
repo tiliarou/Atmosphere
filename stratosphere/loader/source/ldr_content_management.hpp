@@ -13,58 +13,59 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
 #pragma once
-#include <switch.h>
+#include <stratosphere.hpp>
 
-#include "ldr_registration.hpp"
+namespace ams::ldr {
 
-struct OverrideKey {
-    u64 key_combination;
-    bool override_by_default;
-};
+    /* Utility reference to make code mounting automatic. */
+    class ScopedCodeMount {
+        NON_COPYABLE(ScopedCodeMount);
+        private:
+            Result result;
+            cfg::OverrideStatus override_status;
+            bool has_status;
+            bool is_code_mounted;
+            bool is_hbl_mounted;
+        public:
+            ScopedCodeMount(const ncm::ProgramLocation &loc);
+            ScopedCodeMount(const ncm::ProgramLocation &loc, const cfg::OverrideStatus &override_status);
+            ~ScopedCodeMount();
 
-class ContentManagement {
-    public:
-        static Result MountCode(u64 tid, FsStorageId sid);
-        static Result MountCodeNspOnSd(u64 tid);
-        static void TryMountHblNspOnSd();
-        static Result UnmountCode();
-        static Result MountCodeForTidSid(Registration::TidSid *tid_sid);
+            Result GetResult() const {
+                return this->result;
+            }
 
-        static Result ResolveContentPath(char *out_path, u64 tid, FsStorageId sid);
-        static Result RedirectContentPath(const char *path, u64 tid, FsStorageId sid);
-        static Result ResolveContentPathForTidSid(char *out_path, Registration::TidSid *tid_sid);
-        static Result RedirectContentPathForTidSid(const char *path, Registration::TidSid *tid_sid);
+            bool IsCodeMounted() const {
+                return this->is_code_mounted;
+            }
 
-        static void   RedirectHtmlDocumentPathForHbl(u64 tid, FsStorageId sid);
+            bool IsHblMounted() const {
+                return this->is_hbl_mounted;
+            }
 
-        static bool HasCreatedTitle(u64 tid);
-        static void SetCreatedTitle(u64 tid);
-        static void RefreshConfigurationData();
-        static void TryMountSdCard();
+            const cfg::OverrideStatus &GetOverrideStatus() const {
+                AMS_ASSERT(this->has_status);
+                return this->override_status;
+            }
 
-        static OverrideKey GetTitleOverrideKey(u64 tid);
-        static bool ShouldOverrideContentsWithSD(u64 tid);
-        static bool ShouldOverrideContentsWithHBL(u64 tid);
+        private:
+            Result Initialize(const ncm::ProgramLocation &loc);
 
-        /* SetExternalContentSource extension */
-        class ExternalContentSource {
-            public:
-                static void GenerateMountpointName(u64 tid, char *out, size_t max_length);
+            void InitializeOverrideStatus(const ncm::ProgramLocation &loc);
 
-                ExternalContentSource(u64 tid, const char *mountpoint);
-                ~ExternalContentSource();
+            Result MountCodeFileSystem(const ncm::ProgramLocation &loc);
+            Result MountSdCardCodeFileSystem(const ncm::ProgramLocation &loc);
+            Result MountHblFileSystem();
+    };
 
-                ExternalContentSource(const ExternalContentSource &other) = delete;
-                ExternalContentSource(ExternalContentSource &&other) = delete;
-                ExternalContentSource &operator=(const ExternalContentSource &other) = delete;
-                ExternalContentSource &operator=(ExternalContentSource &&other) = delete;
+    /* Content Management API. */
+    Result OpenCodeFile(FILE *&out, ncm::ProgramId program_id, const cfg::OverrideStatus &status, const char *relative_path);
+    Result OpenCodeFileFromBaseExefs(FILE *&out, ncm::ProgramId program_id, const cfg::OverrideStatus &status, const char *relative_path);
 
-                const u64 tid;
-                char mountpoint[32];
-        };
-        static ExternalContentSource *GetExternalContentSource(u64 tid); /* returns nullptr if no ECS is set */
-        static Result SetExternalContentSource(u64 tid, FsFileSystem filesystem); /* takes ownership of filesystem */
-        static void ClearExternalContentSource(u64 tid);
-};
+    /* Redirection API. */
+    Result ResolveContentPath(char *out_path, const ncm::ProgramLocation &loc);
+    Result RedirectContentPath(const char *path, const ncm::ProgramLocation &loc);
+    Result RedirectHtmlDocumentPathForHbl(const ncm::ProgramLocation &loc);
+
+}
