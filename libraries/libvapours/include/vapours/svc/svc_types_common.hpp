@@ -13,9 +13,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include "svc_common.hpp"
+#include <vapours/svc/svc_common.hpp>
+
+namespace ams::kern::svc::impl {
+
+    struct KUserPointerTag{};
+
+}
 
 namespace ams::svc {
 
@@ -40,6 +45,25 @@ namespace ams::svc {
     static_assert(sizeof(Address) == sizeof(uintptr_t));
     static_assert(std::is_trivially_destructible<Address>::value);
 
+    namespace impl {
+
+        struct UserPointerTag{};
+
+    }
+
+    template<typename T>
+    struct UserPointer : impl::UserPointerTag {
+        public:
+            static_assert(std::is_pointer<T>::value);
+            static constexpr bool IsInput = std::is_const<typename std::remove_pointer<T>::type>::value;
+        private:
+            T pointer;
+    };
+
+    template<typename T>
+    static constexpr inline bool IsUserPointer = std::is_base_of<impl::UserPointerTag, T>::value;
+
+    using ProgramId       = u64;
     using PhysicalAddress = u64;
 
     /* Memory types. */
@@ -172,9 +196,9 @@ namespace ams::svc {
 
     /* Synchronization types. */
     enum SignalType : u32 {
-        SignalType_Signal                                          = 0,
-        SignalType_SignalAndIfEqual                                = 1,
-        SignalType_SignalAndModifyBasedOnWaitingThreadCountIfEqual = 2,
+        SignalType_Signal                               = 0,
+        SignalType_SignalAndIncrementIfEqual            = 1,
+        SignalType_SignalAndModifyByWaitingCountIfEqual = 2,
     };
 
     enum ArbitrationType : u32 {
@@ -215,7 +239,7 @@ namespace ams::svc {
     static_assert(sizeof(ThreadContext) == 0x320);
 
 #else
-    #error "Unknown Architecture for ams::svc::ThreadContext"
+    #error >Unknown Architecture for ams::svc::ThreadContext>
 #endif
 
     enum ThreadSuspend : u32 {
@@ -251,6 +275,11 @@ namespace ams::svc {
         ThreadActivity_Paused   = 1,
     };
 
+    constexpr size_t ThreadLocalRegionSize = 0x200;
+
+    constexpr s32 LowestThreadPriority  = 63;
+    constexpr s32 HighestThreadPriority = 0;
+
     /* Process types. */
     enum ProcessInfoType : u32 {
         ProcessInfoType_ProcessState = 0,
@@ -262,9 +291,9 @@ namespace ams::svc {
         ProcessState_Running         = 2,
         ProcessState_Crashed         = 3,
         ProcessState_RunningAttached = 4,
-        ProcessState_Exiting         = 5,
-        ProcessState_Exited          = 6,
-        ProcessState_DebugSuspended  = 7,
+        ProcessState_Terminating     = 5,
+        ProcessState_Terminated      = 6,
+        ProcessState_DebugBreak      = 7,
     };
 
     enum ProcessExitReason : u32 {

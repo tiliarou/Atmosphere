@@ -14,17 +14,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include "svc_types_common.hpp"
-
-#ifdef ATMOSPHERE_BOARD_NINTENDO_SWITCH
-
-    #include "board/nintendo/switch/svc_device_name.hpp"
-
-#else
-
-    #error "Unknown board for svc::DeviceName"
-
-#endif
+#include <vapours/svc/svc_types_common.hpp>
+#include <vapours/svc/svc_select_hardware_constants.hpp>
+#include <vapours/svc/svc_select_device_name.hpp>
 
 namespace ams::svc {
 
