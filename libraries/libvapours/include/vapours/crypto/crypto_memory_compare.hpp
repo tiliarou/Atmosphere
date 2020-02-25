@@ -15,23 +15,12 @@
  */
 
 #pragma once
-#include <vapours/defines.hpp>
+#include <vapours/common.hpp>
+#include <vapours/assert.hpp>
 #include <vapours/util.hpp>
-
-#ifdef ATMOSPHERE_ARCH_ARM64
-
-#include <vapours/crypto/impl/crypto_memory_compare.arch.arm64.hpp>
-
-#else
-
-#error "Unknown architecture for crypto::IsSameBytes"
-
-#endif
 
 namespace ams::crypto {
 
-    bool IsSameBytes(const void *lhs, const void *rhs, size_t size) {
-        return impl::IsSameBytes(lhs, rhs, size);
-    }
+    bool IsSameBytes(const void *lhs, const void *rhs, size_t size);
 
 }
