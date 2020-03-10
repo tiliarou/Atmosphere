@@ -21,7 +21,6 @@ extern "C" {
 
     u32 __nx_applet_type = AppletType_None;
     u32 __nx_fs_num_sessions = 1;
-    u32 __nx_fsdev_direntry_cache_size = 1;
 
     /* TODO: Evaluate how much this can be reduced by. */
     #define INNER_HEAP_SIZE 0x20000
@@ -35,7 +34,7 @@ extern "C" {
 
 namespace ams {
 
-    ncm::ProgramId CurrentProgramId = ncm::ProgramId::Dmnt;
+    ncm::ProgramId CurrentProgramId = ncm::SystemProgramId::Dmnt;
 
     namespace result {
 
@@ -71,26 +70,25 @@ void __appInit(void) {
             R_ABORT_UNLESS(roDmntInitialize());
         }
         R_ABORT_UNLESS(nsdevInitialize());
-        R_ABORT_UNLESS(lrInitialize());
+        lr::Initialize();
         R_ABORT_UNLESS(setInitialize());
         R_ABORT_UNLESS(setsysInitialize());
         R_ABORT_UNLESS(hidInitialize());
         R_ABORT_UNLESS(fsInitialize());
     });
 
-    R_ABORT_UNLESS(fsdevMountSdmc());
+    R_ABORT_UNLESS(fs::MountSdCard("sdmc"));
 
     ams::CheckApiVersion();
 }
 
 void __appExit(void) {
     /* Cleanup services. */
-    fsdevUnmountAll();
     fsExit();
     hidExit();
     setsysExit();
     setExit();
-    lrExit();
+    lr::Finalize();
     nsdevExit();
     roDmntExit();
     ldrDmntExit();

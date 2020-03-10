@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Atmosphère-NX
+ * Copyright (c) 2019-2020 Adubbz, Atmosphère-NX
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -14,13 +14,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <stratosphere.hpp>
+#include <vapours.hpp>
+#include <stratosphere/fs/fs_rights_id.hpp>
 
-namespace ams::ldr::ecs {
+namespace ams::ncm {
 
-    /* External Content Source API. */
-    const char *Get(ncm::ProgramId program_id);
-    Result Set(Handle *out, ncm::ProgramId program_id);
-    Result Clear(ncm::ProgramId program_id);
+    struct RightsId {
+        fs::RightsId id;
+        u8 key_generation;
+        u8 reserved[7];
+    };
+    static_assert(sizeof(RightsId) == 0x18);
+    static_assert(std::is_pod<RightsId>::value);
 
 }

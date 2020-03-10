@@ -16,6 +16,13 @@
 
 #pragma once
 #include <vapours.hpp>
+#include <stratosphere/fs/fs_file.hpp>
+
+namespace ams::fs::fsa {
+
+    class IFile;
+
+}
 
 namespace ams::util::ini {
 
@@ -24,8 +31,7 @@ namespace ams::util::ini {
 
     /* Utilities for dealing with INI file configuration. */
     int ParseString(const char *ini_str, void *user_ctx, Handler h);
-    int ParseFile(FILE *f, void *user_ctx, Handler h);
-    int ParseFile(FsFile *f, void *user_ctx, Handler h);
-    int ParseFile(const char *path, void *user_ctx, Handler h);
+    int ParseFile(fs::FileHandle file, void *user_ctx, Handler h);
+    int ParseFile(fs::fsa::IFile *file, void *user_ctx, Handler h);
 
 }

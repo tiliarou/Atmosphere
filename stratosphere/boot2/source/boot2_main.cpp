@@ -20,7 +20,6 @@ extern "C" {
 
     u32 __nx_applet_type = AppletType_None;
     u32 __nx_fs_num_sessions = 1;
-    u32 __nx_fsdev_direntry_cache_size = 1;
 
     #define INNER_HEAP_SIZE 0x2000
     size_t nx_inner_heap_size = INNER_HEAP_SIZE;
@@ -38,7 +37,7 @@ extern "C" {
 
 namespace ams {
 
-    ncm::ProgramId CurrentProgramId = ncm::ProgramId::Boot2;
+    ncm::ProgramId CurrentProgramId = ncm::SystemProgramId::Boot2;
 
     namespace result {
 
@@ -79,13 +78,14 @@ void __appInit(void) {
         R_ABORT_UNLESS(gpioInitialize());
     });
 
-    R_ABORT_UNLESS(fsdevMountSdmc());
+    /* Mount the SD card. */
+    R_ABORT_UNLESS(fs::MountSdCard("sdmc"));
 
     ams::CheckApiVersion();
 }
 
 void __appExit(void) {
-    fsdevUnmountAll();
+    fs::Unmount("sdmc");
     gpioExit();
     setsysExit();
     pmshellExit();
@@ -96,6 +96,7 @@ void __appExit(void) {
 
 int main(int argc, char **argv)
 {
+    /* Launch all programs off of SYSTEM/the SD. */
     boot2::LaunchPostSdCardBootPrograms();
 }
 
