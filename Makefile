@@ -78,6 +78,7 @@ dist-no-debug: all
 	cp config_templates/BCT.ini atmosphere-$(AMSVER)/atmosphere/config/BCT.ini
 	cp config_templates/override_config.ini atmosphere-$(AMSVER)/atmosphere/config_templates/override_config.ini
 	cp config_templates/system_settings.ini atmosphere-$(AMSVER)/atmosphere/config_templates/system_settings.ini
+	cp -r config_templates/exefs_patches atmosphere-$(AMSVER)/atmosphere/exefs_patches
 	cp -r config_templates/kip_patches atmosphere-$(AMSVER)/atmosphere/kip_patches
 	cp -r config_templates/exefs_patches atmosphere-$(AMSVER)/atmosphere/exefs_patches
 	cp -r config_templates/hbl_html atmosphere-$(AMSVER)/atmosphere/hbl_html
@@ -96,7 +97,7 @@ dist-no-debug: all
 	rm -r atmosphere-$(AMSVER)
 	mkdir out
 	mv atmosphere-$(AMSVER).zip out/atmosphere-$(AMSVER).zip
-	cp fusee/fusee-primary/fusee-primary.bin out/fusee-primary.bin
+	cp fusee/fusee-primary/fusee-primary.bin out/fusee-primary-$(AMSVER).bin
 
 dist: dist-no-debug
 	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
