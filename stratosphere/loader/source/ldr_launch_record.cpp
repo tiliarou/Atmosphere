@@ -26,11 +26,11 @@ namespace ams::ldr {
 
     /* Launch Record API. */
     bool HasLaunchedProgram(ncm::ProgramId program_id) {
-        return g_launched_programs.find(static_cast<u64>(program_id)) != g_launched_programs.end();
+        return g_launched_programs.find(program_id.value) != g_launched_programs.end();
     }
 
     void SetLaunchedProgram(ncm::ProgramId program_id) {
-        g_launched_programs.insert(static_cast<u64>(program_id));
+        g_launched_programs.insert(program_id.value);
     }
 
 }

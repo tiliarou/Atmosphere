@@ -85,7 +85,7 @@ namespace ams::mitm::fs {
             const sf::cmif::DomainObjectId target_object_id{serviceGetObjectId(&sd_fs.s)};
             std::unique_ptr<fs::fsa::IFileSystem> sd_ifs = std::make_unique<fs::RemoteFileSystem>(sd_fs);
 
-            out.SetValue(std::make_shared<IFileSystemInterface>(std::make_shared<fs::ReadOnlyFileSystemAdapter>(std::make_unique<fssystem::SubDirectoryFileSystem>(std::move(sd_ifs), AtmosphereHblWebContentDir)), false), target_object_id);
+            out.SetValue(std::make_shared<IFileSystemInterface>(std::make_shared<fs::ReadOnlyFileSystem>(std::make_unique<fssystem::SubDirectoryFileSystem>(std::move(sd_ifs), AtmosphereHblWebContentDir)), false), target_object_id);
             return ResultSuccess();
         }
 
@@ -126,7 +126,7 @@ namespace ams::mitm::fs {
                     new_fs = std::make_shared<ReadOnlyLayeredFileSystem>(std::move(subdir_fs), std::make_unique<fs::RemoteFileSystem>(base_fs));
                 } else {
                     /* Without an existing FS, just make a read only adapter to the subdirectory. */
-                    new_fs = std::make_shared<fs::ReadOnlyFileSystemAdapter>(std::move(subdir_fs));
+                    new_fs = std::make_shared<fs::ReadOnlyFileSystem>(std::move(subdir_fs));
                 }
 
                 out.SetValue(std::make_shared<IFileSystemInterface>(std::move(new_fs), false), target_object_id);
@@ -176,7 +176,7 @@ namespace ams::mitm::fs {
         return ResultSuccess();
     }
 
-    Result FsMitmService::OpenSaveDataFileSystem(sf::Out<std::shared_ptr<IFileSystemInterface>> out, u8 _space_id, const FsSaveDataAttribute &attribute) {
+    Result FsMitmService::OpenSaveDataFileSystem(sf::Out<std::shared_ptr<IFileSystemInterface>> out, u8 _space_id, const fs::SaveDataAttribute &attribute) {
         /* We only want to intercept saves for games, right now. */
         const bool is_game_or_hbl = this->client_info.override_status.IsHbl() || ncm::IsApplicationId(this->client_info.program_id);
         R_UNLESS(is_game_or_hbl, sm::mitm::ResultShouldForwardToSession());
@@ -188,14 +188,15 @@ namespace ams::mitm::fs {
         R_UNLESS(cfg::HasContentSpecificFlag(this->client_info.program_id, "redirect_save"), sm::mitm::ResultShouldForwardToSession());
 
         /* Only redirect account savedata. */
-        R_UNLESS(attribute.save_data_type == FsSaveDataType_Account, sm::mitm::ResultShouldForwardToSession());
+        R_UNLESS(attribute.type == fs::SaveDataType::Account, sm::mitm::ResultShouldForwardToSession());
 
         /* Get enum type for space id. */
         auto space_id = static_cast<FsSaveDataSpaceId>(_space_id);
 
         /* Verify we can open the save. */
+        static_assert(sizeof(fs::SaveDataAttribute) == sizeof(::FsSaveDataAttribute));
         FsFileSystem save_fs;
-        R_UNLESS(R_SUCCEEDED(fsOpenSaveDataFileSystemFwd(this->forward_service.get(), &save_fs, space_id, &attribute)), sm::mitm::ResultShouldForwardToSession());
+        R_UNLESS(R_SUCCEEDED(fsOpenSaveDataFileSystemFwd(this->forward_service.get(), &save_fs, space_id, reinterpret_cast<const FsSaveDataAttribute *>(&attribute))), sm::mitm::ResultShouldForwardToSession());
         std::unique_ptr<fs::fsa::IFileSystem> save_ifs = std::make_unique<fs::RemoteFileSystem>(save_fs);
 
         /* Mount the SD card using fs.mitm's session. */
@@ -205,7 +206,7 @@ namespace ams::mitm::fs {
         std::shared_ptr<fs::fsa::IFileSystem> sd_ifs = std::make_shared<fs::RemoteFileSystem>(sd_fs);
 
         /* Verify that we can open the save directory, and that it exists. */
-        const ncm::ProgramId application_id = attribute.application_id == 0 ? this->client_info.program_id : ncm::ProgramId{attribute.application_id};
+        const ncm::ProgramId application_id = attribute.program_id == ncm::InvalidProgramId ? this->client_info.program_id : attribute.program_id;
         char save_dir_path[fs::EntryNameLengthMax + 1];
         R_TRY(mitm::fs::SaveUtil::GetDirectorySaveDataPath(save_dir_path, sizeof(save_dir_path), application_id, space_id, attribute));
 
@@ -220,7 +221,7 @@ namespace ams::mitm::fs {
         }
 
         /* Ensure the directory exists. */
-        R_TRY(fssystem::EnsureDirectoryExistsRecursively(sd_ifs.get(), save_dir_path));
+        R_TRY(fssystem::EnsureDirectoryRecursively(sd_ifs.get(), save_dir_path));
 
         /* Create directory savedata filesystem. */
         std::unique_ptr<fs::fsa::IFileSystem> subdir_fs = std::make_unique<fssystem::SubDirectoryFileSystem>(sd_ifs, save_dir_path);

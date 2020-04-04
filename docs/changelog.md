@@ -1,4 +1,38 @@
 # Changelog
+## 0.10.5
++ Changes were made to the way fs.mitm builds images when providing a layeredfs romfs.
+  + Building romfs metadata previously had a memory cost of about ~4-5x the file table size.
+  + This caused games that have particularly enormous file metadata tables (> 4 MB) to exhaust fs.mitm's 16 MB memory pool.
+  + The code that creates romfs images was thus changed to be significantly more memory efficient, again.
+  + Memory requirements have been lowered from ~4x file table size to ~2x file table size + 0.5 MB.
+  + There is a slight speed penalty to this, but testing on Football Manager 2020 only took an extra ~1.5 seconds for the game to boot with many modded files.
+    + This shouldn't be noticeable thanks to the async changes made in 0.10.2.
+  + If you encounter a game that exhausts ams.mitm's memory (crashing it) when loading layeredfs mods, please contact SciresM.
+    + Romfs building can be made even more memory efficient, but unless games show up with even more absurdly huge file tables it seems not worth the speed trade-off.
++ A bug was fixed that caused Atmosphere's fatal error context to not dump TLS for certain processes.
++ General system stability improvements to enhance the user's experience.
+## 0.10.4
++ With major thanks to @Adubbz for his work, the NCM system module has now been re-implemented.
+  + This was a major stepping stone towards the goal of having implementations everything in the Switch's package1/package2 firmware.
+  + This also lays the groundwork for libstratosphere providing bindings for changing the installed version of the Switch's OS.
+  + **Please Note**: The NCM implementation will initially be opt-in.
+    + The Atmosphere team is confident in our NCM implementation (and we have tested it on every firmware version).
+    + That said, this is our first system module that manages NAND savegames -- and caution is a habit.
+    + We do not anticipate any issues that didn't come up in testing, so this is just our being particularly careful.
+    + Users interested in opting in to using our implementation should set `stratosphere!ncm_enabled = 1` in BCT.ini.
+      + In the unlikely event that any issues are encountered, please report them to @SciresM.
+    + The NCM implementation will stop being opt-in in a future update, after thorough testing has been done in practice.
++ A bug was fixed in emummc that caused Nintendo path to be corrupted on 1.0.0.
+  + This manifested as the emummc folder being created inside the virtual NAND instead of the SD card.
+  + It's unlikely there are any negative consequences to this in practice.
+    + If you want to be truly sure, you can re-clone sysmmc before updating a 1.0.0 emummc to latest firmware.
++ Stratosphere system modules now use new Nintendo-style FS bindings instead of stdio.
+  + This saves a modest amount of memory due to leaner code, and greatly increases the accuracy of several components.
+  + These bindings will make it easier for other system modules using libstratosphere to interact with the filesystem.
+  + This also lays the groundwork for changes necessary to support per-emummc Atmosphere folders in a future update.
++ Atmosphere's fatal error context now dumps 0x100 of TLS.
+  + This will make it much easier to fix bugs when an error report is dumped for whatever caused the crash.
++ General system stability improvements to enhance the user's experience.
 ## 0.10.3
 + Support was added for 9.2.0.
 + Support was added for redirecting manual html content for games.

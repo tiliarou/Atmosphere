@@ -32,6 +32,8 @@ namespace ams::util {
                 GetReference(this->values[i]).~Value();
             }
         public:
+            constexpr BoundedMap() : keys(), values() { /* ... */ }
+
             Value *Find(const Key &key) {
                 for (size_t i = 0; i < N; i++) {
                     if (this->keys[i] && this->keys[i].value() == key) {
@@ -114,7 +116,6 @@ namespace ams::util {
 
                 /* Find a free value. */
                 for (size_t i = 0; i < N; i++) {
-                    this->keys[i] = key;
                     if (!this->keys[i]) {
                         this->keys[i] = key;
                         new (GetPointer(this->values[i])) Value(std::forward<Args>(args)...);

@@ -13,14 +13,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#include <stratosphere.hpp>
+#include <vapours.hpp>
 
-namespace ams::ldr::ecs {
+namespace ams::crypto {
 
-    /* External Content Source API. */
-    const char *Get(ncm::ProgramId program_id);
-    Result Set(Handle *out, ncm::ProgramId program_id);
-    Result Clear(ncm::ProgramId program_id);
+    void GenerateSha1Hash(void *dst, size_t dst_size, const void *src, size_t src_size) {
+        Sha1Generator gen;
+
+        gen.Initialize();
+        gen.Update(src, src_size);
+        gen.GetHash(dst, dst_size);
+    }
 
 }

@@ -24,8 +24,8 @@ namespace ams::os {
         private:
             Handle hnd;
         public:
-            ManagedHandle() : hnd(INVALID_HANDLE) { /* ... */ }
-            ManagedHandle(Handle h) : hnd(h) { /* ... */ }
+            constexpr ManagedHandle() : hnd(INVALID_HANDLE) { /* ... */ }
+            constexpr ManagedHandle(Handle h) : hnd(h) { /* ... */ }
             ~ManagedHandle() {
                 if (this->hnd != INVALID_HANDLE) {
                     R_ABORT_UNLESS(svcCloseHandle(this->hnd));
@@ -38,7 +38,7 @@ namespace ams::os {
                 rhs.hnd = INVALID_HANDLE;
             }
 
-            ManagedHandle& operator=(ManagedHandle&& rhs) {
+            ManagedHandle &operator=(ManagedHandle&& rhs) {
                 rhs.Swap(*this);
                 return *this;
             }
@@ -47,7 +47,7 @@ namespace ams::os {
                 return this->hnd != INVALID_HANDLE;
             }
 
-            void Swap(ManagedHandle& rhs) {
+            void Swap(ManagedHandle &rhs) {
                 std::swap(this->hnd, rhs.hnd);
             }
 

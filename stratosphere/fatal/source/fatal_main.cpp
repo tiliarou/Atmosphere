@@ -23,7 +23,6 @@ extern "C" {
 
     u32 __nx_applet_type = AppletType_None;
     u32 __nx_fs_num_sessions = 1;
-    u32 __nx_fsdev_direntry_cache_size = 1;
 
     #define INNER_HEAP_SIZE 0x240000
     size_t nx_inner_heap_size = INNER_HEAP_SIZE;
@@ -96,14 +95,13 @@ void __appInit(void) {
         R_ABORT_UNLESS(fsInitialize());
     });
 
-    R_ABORT_UNLESS(fsdevMountSdmc());
+    R_ABORT_UNLESS(fs::MountSdCard("sdmc"));
 
     /* fatal cannot throw fatal, so don't do: ams::CheckApiVersion(); */
 }
 
 void __appExit(void) {
     /* Cleanup services. */
-    fsdevUnmountAll();
     fsExit();
     plExit();
     gpioExit();

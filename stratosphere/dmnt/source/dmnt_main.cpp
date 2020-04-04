@@ -21,7 +21,6 @@ extern "C" {
 
     u32 __nx_applet_type = AppletType_None;
     u32 __nx_fs_num_sessions = 1;
-    u32 __nx_fsdev_direntry_cache_size = 1;
 
     /* TODO: Evaluate how much this can be reduced by. */
     #define INNER_HEAP_SIZE 0x20000
@@ -78,14 +77,13 @@ void __appInit(void) {
         R_ABORT_UNLESS(fsInitialize());
     });
 
-    R_ABORT_UNLESS(fsdevMountSdmc());
+    R_ABORT_UNLESS(fs::MountSdCard("sdmc"));
 
     ams::CheckApiVersion();
 }
 
 void __appExit(void) {
     /* Cleanup services. */
-    fsdevUnmountAll();
     fsExit();
     hidExit();
     setsysExit();
@@ -141,7 +139,7 @@ int main(int argc, char **argv)
 
         /* Initialize threads. */
         if constexpr (NumExtraThreads > 0) {
-            const u32 priority = os::GetCurrentThreadPriority();
+            const s32 priority = os::GetCurrentThreadPriority();
             for (size_t i = 0; i < NumExtraThreads; i++) {
                 R_ABORT_UNLESS(g_extra_threads[i].Initialize(LoopServerThread, nullptr, g_extra_thread_stacks[i], ThreadStackSize, priority));
             }
