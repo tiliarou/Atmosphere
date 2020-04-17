@@ -115,10 +115,10 @@ namespace {
         cfg::GetInitialProcessRange(&min_priv_process_id, &max_priv_process_id);
 
         /* Get list of processes, register all privileged ones. */
-        u32 num_pids;
+        s32 num_pids;
         os::ProcessId pids[ProcessCountMax];
-        R_ABORT_UNLESS(svcGetProcessList(&num_pids, reinterpret_cast<u64 *>(pids), ProcessCountMax));
-        for (size_t i = 0; i < num_pids; i++) {
+        R_ABORT_UNLESS(svc::GetProcessList(&num_pids, reinterpret_cast<u64 *>(pids), ProcessCountMax));
+        for (s32 i = 0; i < num_pids; i++) {
             if (min_priv_process_id <= pids[i] && pids[i] <= max_priv_process_id) {
                 RegisterPrivilegedProcess(pids[i]);
             }
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
     /* Create Services. */
     /* NOTE: Extra sessions have been added to pm:bm and pm:info to facilitate access by the rest of stratosphere. */
     /* Also Note: PM was rewritten in 5.0.0, so the shell and dmnt services are different before/after. */
-    if (hos::GetVersion() >= hos::Version_500) {
+    if (hos::GetVersion() >= hos::Version_5_0_0) {
         R_ABORT_UNLESS((g_server_manager.RegisterServer<pm::shell::ShellService>(ShellServiceName, ShellMaxSessions)));
         R_ABORT_UNLESS((g_server_manager.RegisterServer<pm::dmnt::DebugMonitorService>(DebugMonitorServiceName, DebugMonitorMaxSessions)));
     } else {
