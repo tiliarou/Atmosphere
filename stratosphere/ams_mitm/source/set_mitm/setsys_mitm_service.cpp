@@ -22,7 +22,7 @@ namespace ams::mitm::settings {
 
     namespace {
 
-        os::Mutex g_firmware_version_lock;
+        os::Mutex g_firmware_version_lock(false);
         bool g_cached_firmware_version;
         settings::FirmwareVersion g_firmware_version;
         settings::FirmwareVersion g_ams_firmware_version;
@@ -30,7 +30,7 @@ namespace ams::mitm::settings {
         void CacheFirmwareVersion() {
             std::scoped_lock lk(g_firmware_version_lock);
 
-            if (g_cached_firmware_version) {
+            if (AMS_LIKELY(g_cached_firmware_version)) {
                 return;
             }
 
@@ -60,7 +60,7 @@ namespace ams::mitm::settings {
                 #pragma GCC diagnostic ignored "-Wformat-truncation"
                 {
                     char display_version[sizeof(g_ams_firmware_version.display_version)];
-                    std::snprintf(display_version, sizeof(display_version), "%s|AMS %u.%u.%u|%c", g_ams_firmware_version.display_version, api_info.GetMajorVersion(), api_info.GetMinorVersion(), api_info.GetMicroVersion(), emummc_char);
+                    std::snprintf(display_version, sizeof(display_version), "%s|NEU %u.%u.%u|%c", g_ams_firmware_version.display_version, api_info.GetMajorVersion(), api_info.GetMinorVersion(), api_info.GetMicroVersion(), emummc_char);
                     std::memcpy(g_ams_firmware_version.display_version, display_version, sizeof(display_version));
                 }
                 #pragma GCC diagnostic pop
