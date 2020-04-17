@@ -84,6 +84,7 @@ dist-no-debug: all
 	cp -r config_templates/exefs_patches atmosphere-$(AMSVER)/atmosphere/exefs_patches
 	cp -r config_templates/hbl_html atmosphere-$(AMSVER)/atmosphere/hbl_html
 	cp shofel2.license atmosphere-$(AMSVER)/license/shofel2.license
+	cp LICENSE atmosphere-$(AMSVER)/license/atmosphere.license
 	cp stratosphere/boot2/boot2.nsp atmosphere-$(AMSVER)/atmosphere/contents/0100000000000008/exefs.nsp
 	cp stratosphere/dmnt/dmnt.nsp atmosphere-$(AMSVER)/atmosphere/contents/010000000000000D/exefs.nsp
 	cp stratosphere/erpt/erpt.nsp atmosphere-$(AMSVER)/atmosphere/contents/010000000000002B/exefs.nsp
