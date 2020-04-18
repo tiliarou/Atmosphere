@@ -101,7 +101,12 @@ dist-no-debug: all
 	rm -r atmosphere-$(AMSVER)
 	mkdir out
 	mv atmosphere-$(AMSVER).zip out/atmosphere-$(AMSVER).zip
+	cp shofel2/payload.bin out/payload.bin
 	cp fusee/fusee-primary/fusee-primary.bin out/fusee-primary.bin
+	cp tools/tx_custom_boot.py out/tx_custom_boot.py
+	cd ./out && python3 ./tx_custom_boot.py
+	rm out/tx_custom_boot.py
+	rm out/fusee-primary.bin
 
 dist: dist-no-debug
 	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
