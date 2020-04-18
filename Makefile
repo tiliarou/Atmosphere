@@ -52,6 +52,7 @@ dist-no-debug: all
 	$(eval AMSVER = $(MAJORVER).$(MINORVER).$(MICROVER)-$(AMSREV))
 	rm -rf atmosphere-$(AMSVER)
 	rm -rf out
+	rm -rf emummc_configs_for_sxos_hidden_partition_emunand_users
 	mkdir out
 	cp shofel2/payload.bin out/payload.bin
 	cp fusee/fusee-primary/fusee-primary.bin out/fusee-primary.bin
@@ -59,6 +60,12 @@ dist-no-debug: all
 	cd ./out && python3 ./tx_custom_boot.py
 	rm out/tx_custom_boot.py
 	rm out/fusee-primary.bin
+	mkdir emummc_configs_for_sxos_hidden_partition_emunand_users
+	mkdir emummc_configs_for_sxos_hidden_partition_emunand_users/emuMMC
+	cp config_templates/emummc.ini emummc_configs_for_sxos_hidden_partition_emunand_users/emuMMC/emummc.ini
+	cd emummc_configs_for_sxos_hidden_partition_emunand_users; zip -r ../emummc_configs_for_sxos_hidden_partition_emunand_users.zip ./*; cd ../;
+	mv emummc_configs_for_sxos_hidden_partition_emunand_users.zip out/emummc_configs_for_sxos_hidden_partition_emunand_users.zip
+	rm -r emummc_configs_for_sxos_hidden_partition_emunand_users
 	mkdir atmosphere-$(AMSVER)
 	mkdir atmosphere-$(AMSVER)/atmosphere
 	mkdir atmosphere-$(AMSVER)/sept
