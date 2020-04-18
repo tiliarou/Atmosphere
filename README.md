@@ -5,7 +5,6 @@ This is a modified 0.11.1 Atmosphere release nicknamed "NEUTOS", it has support 
 There are third-party binaries distributed with "NEUTOS", that should not be confused with the Atmosphere project. The licenses for these binaries are included. It should be noted that none of these binaries are licensed under gplv2 such as Atmosphere is. Binaries with origin such as "NX-Hbmenu" (hbmenu.nro), "NX-hbloader" (atmosphere/hbl.nsp). And a shofel2 "RCM payload", distributed under two names (atmosphere/reboot_payload.bin) and (payload.bin), with vague origins being based off of Shofel2.
 
 
-----
 * https://github.com/switchbrew/nx-hbloader
 * https://github.com/switchbrew/nx-hbmenu
 * https://github.com/fail0verflow/shofel2
