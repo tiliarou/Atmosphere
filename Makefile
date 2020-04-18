@@ -56,6 +56,7 @@ dist-no-debug: all
 	mkdir atmosphere-$(AMSVER)/atmosphere
 	mkdir atmosphere-$(AMSVER)/sept
 	mkdir atmosphere-$(AMSVER)/switch
+	mkdir atmosphere-$(AMSVER)/licenses
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/contents/0100000000000008
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/contents/010000000000000D
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/contents/010000000000002B
@@ -66,7 +67,8 @@ dist-no-debug: all
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/fatal_errors
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/config_templates
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/config
-	cp fusee/fusee-primary/fusee-primary.bin atmosphere-$(AMSVER)/atmosphere/reboot_payload.bin
+	cp shofel2/payload.bin atmosphere-$(AMSVER)/atmosphere/reboot_payload.bin
+	cp shofel2/payload.bin atmosphere-$(AMSVER)/payload.bin
 	cp fusee/fusee-mtc/fusee-mtc.bin atmosphere-$(AMSVER)/atmosphere/fusee-mtc.bin
 	cp fusee/fusee-secondary/fusee-secondary.bin atmosphere-$(AMSVER)/atmosphere/fusee-secondary.bin
 	cp fusee/fusee-secondary/fusee-secondary.bin atmosphere-$(AMSVER)/sept/payload.bin
@@ -80,7 +82,9 @@ dist-no-debug: all
 	cp config_templates/override_config.ini atmosphere-$(AMSVER)/atmosphere/config_templates/override_config.ini
 	cp config_templates/system_settings.ini atmosphere-$(AMSVER)/atmosphere/config_templates/system_settings.ini
 	cp -r config_templates/kip_patches atmosphere-$(AMSVER)/atmosphere/kip_patches
+	cp -r config_templates/exefs_patches atmosphere-$(AMSVER)/atmosphere/exefs_patches
 	cp -r config_templates/hbl_html atmosphere-$(AMSVER)/atmosphere/hbl_html
+	cp -r licenses/ atmosphere-$(AMSVER)/licenses/
 	cp stratosphere/boot2/boot2.nsp atmosphere-$(AMSVER)/atmosphere/contents/0100000000000008/exefs.nsp
 	cp stratosphere/dmnt/dmnt.nsp atmosphere-$(AMSVER)/atmosphere/contents/010000000000000D/exefs.nsp
 	cp stratosphere/erpt/erpt.nsp atmosphere-$(AMSVER)/atmosphere/contents/010000000000002B/exefs.nsp
