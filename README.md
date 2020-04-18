@@ -1,6 +1,6 @@
 I can be reached on discordapp.com, username borntohonk#5901, if there are any concerns or questions that relate to licensing or legal formalities, if needed. (I do not use reddit, or any other social media.)
 
-This is a modified 0.11.1 Atmosphere release nicknamed "NEUTOS", it has support for firmware versions up to and including 10.0, making it have support for Tinfoil 8+ out of the box. It contains the necessary changes for Tinfoil to be able to run.
+This is a modified Atmosphere fork nicknamed "NEUTOS", it's main purpose is to add support for a widely used homebrew named "Tinfoil" ( https://tinfoil.io ), as this kind of support is not native to Atmosphere.
 
 There are third-party binaries distributed with "NEUTOS", that should not be confused with the Atmosphere project. The licenses for these binaries are included. It should be noted that none of these binaries are licensed under gplv2 such as Atmosphere is. Binaries with origin such as "NX-Hbmenu" (hbmenu.nro), "NX-hbloader" (atmosphere/hbl.nsp). And a shofel2 "RCM payload", distributed under two names (atmosphere/reboot_payload.bin) and (payload.bin), with vague origins being based off of Shofel2.
 
