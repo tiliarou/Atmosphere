@@ -52,6 +52,13 @@ dist-no-debug: all
 	$(eval AMSVER = $(MAJORVER).$(MINORVER).$(MICROVER)-$(AMSREV))
 	rm -rf atmosphere-$(AMSVER)
 	rm -rf out
+	mkdir out
+	cp shofel2/payload.bin out/payload.bin
+	cp fusee/fusee-primary/fusee-primary.bin out/fusee-primary.bin
+	cp tools/tx_custom_boot.py out/tx_custom_boot.py
+	cd ./out && python3 ./tx_custom_boot.py
+	rm out/tx_custom_boot.py
+	rm out/fusee-primary.bin
 	mkdir atmosphere-$(AMSVER)
 	mkdir atmosphere-$(AMSVER)/atmosphere
 	mkdir atmosphere-$(AMSVER)/sept
@@ -67,6 +74,7 @@ dist-no-debug: all
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/fatal_errors
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/config_templates
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/config
+	cp out/boot.dat atmosphere-$(AMSVER)/boot.dat
 	cp nx-hbloader/hbl.nsp atmosphere-$(AMSVER)/atmosphere/hbl.nsp
 	cp nx-hbmenu/hbmenu.nro atmosphere-$(AMSVER)/hbmenu.nro
 	cp shofel2/payload.bin atmosphere-$(AMSVER)/atmosphere/reboot_payload.bin
@@ -101,14 +109,8 @@ dist-no-debug: all
 	cp troposphere/reboot_to_payload/reboot_to_payload.nro atmosphere-$(AMSVER)/switch/reboot_to_payload.nro
 	cd atmosphere-$(AMSVER); zip -r ../atmosphere-$(AMSVER).zip ./*; cd ../;
 	rm -r atmosphere-$(AMSVER)
-	mkdir out
+	rm out/boot.dat
 	mv atmosphere-$(AMSVER).zip out/atmosphere-$(AMSVER)+hbl-2.3.1+hbmenu-3.3.0.zip
-	cp shofel2/payload.bin out/payload.bin
-	cp fusee/fusee-primary/fusee-primary.bin out/fusee-primary.bin
-	cp tools/tx_custom_boot.py out/tx_custom_boot.py
-	cd ./out && python3 ./tx_custom_boot.py
-	rm out/tx_custom_boot.py
-	rm out/fusee-primary.bin
 
 dist: dist-no-debug
 	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
