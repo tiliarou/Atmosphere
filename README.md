@@ -2,10 +2,11 @@ I can be reached on discordapp.com, username borntohonk#5901, if there are any c
 
 This is a modified Atmosphere fork nicknamed "NEUTOS", it's main purpose is to add support for a widely used homebrew named "Tinfoil" ( https://tinfoil.io ), as this kind of support is not native to Atmosphere. If such support were added natively to Atmosphere, this fork will cease to be updated.
 
+One can compile and produce the resulting NEUTOS archive by using the command `make dist-no-debug`
+
 There are third-party binaries distributed with "NEUTOS", which should not be confused with the Atmosphere project. The licenses for these binaries are included. It should be noted that none of these specifically listed binaries are licensed under gplv2 such as Atmosphere is. Binaries with origin such as "NX-Hbmenu" (hbmenu.nro), "NX-hbloader" (atmosphere/hbl.nsp). And a closed source shofel2 based "RCM payload", distributed under two names (atmosphere/reboot_payload.bin) and (payload.bin).
 
-A python based tool ( https://gist.github.com/borntohonk/c92b20cd1ae6e405009eb52524b0b875 ) is also used to transform "Fusee-Primary" (source code here, under fusee/fusee-primary/source) into the file called "boot.dat", which is what the closed source shofel2 based "RCM payload" loads from a fixed offset after it has been transformed into boot.dat
-
+A python based tool ( https://gist.github.com/borntohonk/c92b20cd1ae6e405009eb52524b0b875 ) is also used to transform "Fusee-Primary" (source code here, under fusee/fusee-primary/src) into the file called "boot.dat", which is what the closed source shofel2 based "RCM payload" loads from a fixed offset after it has been transformed into boot.dat
 
 * https://github.com/switchbrew/nx-hbloader
 * https://github.com/switchbrew/nx-hbmenu
