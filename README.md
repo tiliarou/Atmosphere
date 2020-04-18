@@ -7,6 +7,9 @@ There are third-party binaries distributed with "NEUTOS", which should not be co
 A python based tool ( https://gist.github.com/borntohonk/c92b20cd1ae6e405009eb52524b0b875 ) is also used to transform "Fusee-Primary" (source code here, under fusee/fusee-primary/source) into the file called "boot.dat", which is what the closed source shofel2 based "RCM payload" loads from a fixed offset after it has been transformed into boot.dat
 
 
+One can compile and produce the resulting NEUTOS archive by using the command `make dist-no-debug`
+
+
 * https://github.com/switchbrew/nx-hbloader
 * https://github.com/switchbrew/nx-hbmenu
 * https://github.com/fail0verflow/shofel2
