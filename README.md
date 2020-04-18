@@ -1,8 +1,8 @@
 I can be reached on discordapp.com, username borntohonk#5901, if there are any concerns or questions that relate to licensing or legal formalities, if needed. (I do not use reddit, or any other social media.)
 
-This is a modified Atmosphere fork nicknamed "NEUTOS", it's main purpose is to add support for a widely used homebrew named "Tinfoil" ( https://tinfoil.io ), as this kind of support is not native to Atmosphere. If such support were added natively to Atmosphere, this fork will cease to be updated.
+This is a modified Atmosphere fork nicknamed "NEUTOS", it's main purpose is to add support for a widely used homebrew named "Tinfoil" ( https://tinfoil.io ), as this kind of support is not native to Atmosphere. If such support were added natively to Atmosphere, this fork will cease to be updated and be discontinued. Support is to be described as permitted to run while installed as homebrew application. Any function derived for as a "content manager" is not necessary to qualify as being supported natively. Just the abillity to be installed, and to run as a homebrew application.
 
-One can compile and produce the resulting NEUTOS archive by using the command `make dist-no-debug`
+One can compile and produce the resulting NEUTOS release by using the command `make neutos` when compiling.
 
 There are third-party binaries distributed with "NEUTOS", which should not be confused with the Atmosphere project. The licenses for these binaries are included. It should be noted that none of these specifically listed binaries are licensed under gplv2 such as Atmosphere is. Binaries with origin such as "NX-Hbmenu" (hbmenu.nro), "NX-hbloader" (atmosphere/hbl.nsp). And a closed source shofel2 based "RCM payload", distributed under two names (atmosphere/reboot_payload.bin) and (payload.bin).
 
