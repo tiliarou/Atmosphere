@@ -1,4 +1,4 @@
-TOPTARGETS := all clean dist-no-debug neutos dist
+TOPTARGETS := all all-components clean dist-no-debug dist neutos
 AMSBRANCH := $(shell git symbolic-ref --short HEAD)
 AMSHASH := $(shell git rev-parse --short HEAD)
 AMSREV := $(AMSBRANCH)-$(AMSHASH)
@@ -7,11 +7,13 @@ ifneq (, $(strip $(shell git status --porcelain 2>/dev/null)))
     AMSREV := $(AMSREV)-dirty
 endif
 
-COMPONENTS := fusee stratosphere mesosphere exosphere thermosphere troposphere libraries
+COMPONENTS := build-hbl build-hbmenu fusee stratosphere mesosphere exosphere thermosphere troposphere libraries
+all-components: $(COMPONENTS)
 
-all: $(COMPONENTS)
+all: build-libnx
+	$(MAKE) all-components
 
-thermosphere:
+thermosphere: 
 	$(MAKE) -C thermosphere all
 
 exosphere: thermosphere
@@ -35,9 +37,23 @@ fusee: exosphere mesosphere stratosphere sept
 libraries:
 	$(MAKE) -C libraries all
 
-clean:
+build-libnx:
+	$(MAKE) -C libnx install
+
+build-hbmenu:
+	$(MAKE) -C hbmenu nx
+
+build-hbl:
+	$(MAKE) -C hbl
+
+clean: clean-neutos
 	$(MAKE) -C fusee clean
 	rm -rf out
+
+clean-neutos:
+	$(MAKE) -C libnx clean
+	$(MAKE) -C hbl clean
+	$(MAKE) -C hbmenu clean
 
 dist-no-debug: all
 	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
@@ -98,7 +114,48 @@ dist-no-debug: all
 	mkdir out
 	mv atmosphere-$(AMSVER).zip out/atmosphere-$(AMSVER).zip
 	cp fusee/fusee-primary/fusee-primary.bin out/fusee-primary.bin
-	
+
+dist: dist-no-debug
+	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	$(eval MINORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MINOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	$(eval MICROVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MICRO\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
+		| tr -s [:blank:] \
+		| cut -d' ' -f3))
+	$(eval AMSVER = $(MAJORVER).$(MINORVER).$(MICROVER)-$(AMSREV))
+	rm -rf atmosphere-$(AMSVER)-debug
+	mkdir atmosphere-$(AMSVER)-debug
+	cp fusee/fusee-primary/fusee-primary.elf atmosphere-$(AMSVER)-debug/fusee-primary.elf
+	cp fusee/fusee-mtc/fusee-mtc.elf atmosphere-$(AMSVER)-debug/fusee-mtc.elf
+	cp fusee/fusee-secondary/fusee-secondary.elf atmosphere-$(AMSVER)-debug/fusee-secondary.elf
+	cp sept/sept-primary/sept-primary.elf atmosphere-$(AMSVER)-debug/sept-primary.elf
+	cp sept/sept-secondary/sept-secondary.elf atmosphere-$(AMSVER)-debug/sept-secondary.elf
+	cp sept/sept-secondary/key_derivation/key_derivation.elf atmosphere-$(AMSVER)-debug/sept-secondary-key-derivation.elf
+	cp exosphere/exosphere.elf atmosphere-$(AMSVER)-debug/exosphere.elf
+	cp exosphere/lp0fw/lp0fw.elf atmosphere-$(AMSVER)-debug/lp0fw.elf
+	cp exosphere/sc7fw/sc7fw.elf atmosphere-$(AMSVER)-debug/sc7fw.elf
+	cp exosphere/rebootstub/rebootstub.elf atmosphere-$(AMSVER)-debug/rebootstub.elf
+	cp mesosphere/kernel_ldr/kernel_ldr.elf atmosphere-$(AMSVER)-debug/kernel_ldr.elf
+	cp stratosphere/ams_mitm/ams_mitm.elf atmosphere-$(AMSVER)-debug/ams_mitm.elf
+	cp stratosphere/boot/boot.elf atmosphere-$(AMSVER)-debug/boot.elf
+	cp stratosphere/boot2/boot2.elf atmosphere-$(AMSVER)-debug/boot2.elf
+	cp stratosphere/creport/creport.elf atmosphere-$(AMSVER)-debug/creport.elf
+	cp stratosphere/dmnt/dmnt.elf atmosphere-$(AMSVER)-debug/dmnt.elf
+	cp stratosphere/eclct.stub/eclct.stub.elf atmosphere-$(AMSVER)-debug/eclct.stub.elf
+	cp stratosphere/fatal/fatal.elf atmosphere-$(AMSVER)-debug/fatal.elf
+	cp stratosphere/loader/loader.elf atmosphere-$(AMSVER)-debug/loader.elf
+	cp stratosphere/pm/pm.elf atmosphere-$(AMSVER)-debug/pm.elf
+	cp stratosphere/ro/ro.elf atmosphere-$(AMSVER)-debug/ro.elf
+	cp stratosphere/sm/sm.elf atmosphere-$(AMSVER)-debug/sm.elf
+	cp stratosphere/spl/spl.elf atmosphere-$(AMSVER)-debug/spl.elf
+	cp stratosphere/erpt/erpt.elf atmosphere-$(AMSVER)-debug/erpt.elf
+	cd atmosphere-$(AMSVER)-debug; zip -r ../atmosphere-$(AMSVER)-debug.zip ./*; cd ../;
+	rm -r atmosphere-$(AMSVER)-debug
+	mv atmosphere-$(AMSVER)-debug.zip out/atmosphere-$(AMSVER)-debug.zip
+
 neutos: all
 	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
 		| tr -s [:blank:] \
@@ -142,8 +199,8 @@ neutos: all
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/config_templates
 	mkdir -p atmosphere-$(AMSVER)/atmosphere/config
 	cp out/boot.dat atmosphere-$(AMSVER)/boot.dat
-	cp nx-hbloader/hbl.nsp atmosphere-$(AMSVER)/atmosphere/hbl.nsp
-	cp nx-hbmenu/hbmenu.nro atmosphere-$(AMSVER)/hbmenu.nro
+	cp hbl/hbl.nsp atmosphere-$(AMSVER)/atmosphere/hbl.nsp
+	cp hbmenu/hbmenu.nro atmosphere-$(AMSVER)/hbmenu.nro
 	cp shofel2/payload.bin atmosphere-$(AMSVER)/atmosphere/reboot_payload.bin
 	cp shofel2/payload.bin atmosphere-$(AMSVER)/payload.bin
 	cp fusee/fusee-mtc/fusee-mtc.bin atmosphere-$(AMSVER)/atmosphere/fusee-mtc.bin
@@ -178,47 +235,6 @@ neutos: all
 	rm -r atmosphere-$(AMSVER)
 	rm out/boot.dat
 	mv atmosphere-$(AMSVER).zip out/atmosphere-$(AMSVER)+hbl-2.3.1+hbmenu-3.3.0.zip
-
-dist: dist-no-debug
-	$(eval MAJORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MAJOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
-		| tr -s [:blank:] \
-		| cut -d' ' -f3))
-	$(eval MINORVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MINOR\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
-		| tr -s [:blank:] \
-		| cut -d' ' -f3))
-	$(eval MICROVER = $(shell grep 'define ATMOSPHERE_RELEASE_VERSION_MICRO\b' libraries/libvapours/include/vapours/ams/ams_api_version.h \
-		| tr -s [:blank:] \
-		| cut -d' ' -f3))
-	$(eval AMSVER = $(MAJORVER).$(MINORVER).$(MICROVER)-$(AMSREV))
-	rm -rf atmosphere-$(AMSVER)-debug
-	mkdir atmosphere-$(AMSVER)-debug
-	cp fusee/fusee-primary/fusee-primary.elf atmosphere-$(AMSVER)-debug/fusee-primary.elf
-	cp fusee/fusee-mtc/fusee-mtc.elf atmosphere-$(AMSVER)-debug/fusee-mtc.elf
-	cp fusee/fusee-secondary/fusee-secondary.elf atmosphere-$(AMSVER)-debug/fusee-secondary.elf
-	cp sept/sept-primary/sept-primary.elf atmosphere-$(AMSVER)-debug/sept-primary.elf
-	cp sept/sept-secondary/sept-secondary.elf atmosphere-$(AMSVER)-debug/sept-secondary.elf
-	cp sept/sept-secondary/key_derivation/key_derivation.elf atmosphere-$(AMSVER)-debug/sept-secondary-key-derivation.elf
-	cp exosphere/exosphere.elf atmosphere-$(AMSVER)-debug/exosphere.elf
-	cp exosphere/lp0fw/lp0fw.elf atmosphere-$(AMSVER)-debug/lp0fw.elf
-	cp exosphere/sc7fw/sc7fw.elf atmosphere-$(AMSVER)-debug/sc7fw.elf
-	cp exosphere/rebootstub/rebootstub.elf atmosphere-$(AMSVER)-debug/rebootstub.elf
-	cp mesosphere/kernel_ldr/kernel_ldr.elf atmosphere-$(AMSVER)-debug/kernel_ldr.elf
-	cp stratosphere/ams_mitm/ams_mitm.elf atmosphere-$(AMSVER)-debug/ams_mitm.elf
-	cp stratosphere/boot/boot.elf atmosphere-$(AMSVER)-debug/boot.elf
-	cp stratosphere/boot2/boot2.elf atmosphere-$(AMSVER)-debug/boot2.elf
-	cp stratosphere/creport/creport.elf atmosphere-$(AMSVER)-debug/creport.elf
-	cp stratosphere/dmnt/dmnt.elf atmosphere-$(AMSVER)-debug/dmnt.elf
-	cp stratosphere/eclct.stub/eclct.stub.elf atmosphere-$(AMSVER)-debug/eclct.stub.elf
-	cp stratosphere/fatal/fatal.elf atmosphere-$(AMSVER)-debug/fatal.elf
-	cp stratosphere/loader/loader.elf atmosphere-$(AMSVER)-debug/loader.elf
-	cp stratosphere/pm/pm.elf atmosphere-$(AMSVER)-debug/pm.elf
-	cp stratosphere/ro/ro.elf atmosphere-$(AMSVER)-debug/ro.elf
-	cp stratosphere/sm/sm.elf atmosphere-$(AMSVER)-debug/sm.elf
-	cp stratosphere/spl/spl.elf atmosphere-$(AMSVER)-debug/spl.elf
-	cp stratosphere/erpt/erpt.elf atmosphere-$(AMSVER)-debug/erpt.elf
-	cd atmosphere-$(AMSVER)-debug; zip -r ../atmosphere-$(AMSVER)-debug.zip ./*; cd ../;
-	rm -r atmosphere-$(AMSVER)-debug
-	mv atmosphere-$(AMSVER)-debug.zip out/atmosphere-$(AMSVER)-debug.zip
 
 
 .PHONY: $(TOPTARGETS) $(COMPONENTS)
