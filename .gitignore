@@ -83,7 +83,12 @@ sept/sept-secondary/KEYS.py
 
 # NOTE: make sure to make exceptions to this pattern when needed!
 *.bin
+!shofel2/payload.bin
 *.enc
 
 **/out
 **/build
+
+**/hbl
+**/libnx
+**/hbmenu

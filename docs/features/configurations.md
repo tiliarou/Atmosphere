@@ -5,17 +5,6 @@ Atmosphère provides a variety of customizable configurations to better adjust t
 This is the configuration file used by fusée.
 This file is located under the `/atmosphere/config/` folder on your SD card and a default template can be found inside the `/atmosphere/config_templates/` folder.
 
-### Adding a Custom Boot Splashscreen
-Atmosphère provides its own default splashscreen which is displayed at boot time. However, this can be replaced at will.
-
-The boot splashscreen must be a BMP file, it must be 720x1280 (1280x720 rotated 90 degrees left/counterclockwise/anti-clockwise) resolution, and be in 32-bit ARGB format. You can use image editing software such as GIMP or Photoshop to export the image in this format.
- 
-Add the following lines to BCT.ini and change the value of `custom_splash` to the actual path and filename of your boot splashscreen:
-```
-[stage2]
-custom_splash = /path/to/your/bootlogo.bmp
-```
-
 ### Configuring "nogc" Protection
 "nogc" is a feature provided by fusée-secondary which disables the Nintendo Switch's Game Card reader. Its purpose is to prevent the reader from being updated when the console has been updated, without burning fuses, from a lower firmware version. More specifically, from firmware versions 4.0.0 or 9.0.0 which introduced updates to the Game Card reader's firmware. By default, Atmosphère will protect the Game Card reader automatically, but you are free to change it.
 
