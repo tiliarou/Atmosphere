@@ -66,7 +66,7 @@ void __libnx_initheap(void) {
 }
 
 void __appInit(void) {
-    hos::SetVersionForLibnx();
+    hos::InitializeForStratosphere();
 
     sm::DoWithSession([&]() {
         R_ABORT_UNLESS(setInitialize());
@@ -120,6 +120,10 @@ namespace ams::erpt {
 
 int main(int argc, char **argv)
 {
+    /* Set thread name. */
+    os::SetThreadNamePointer(os::GetCurrentThread(), AMS_GET_SYSTEM_THREAD_NAME(erpt, Main));
+    AMS_ASSERT(os::GetThreadPriority(os::GetCurrentThread()) == AMS_GET_SYSTEM_THREAD_PRIORITY(erpt, Main));
+
     /* Set the memory heap for erpt::srv namespace. */
     R_ABORT_UNLESS(erpt::srv::Initialize(erpt::g_memory_heap, erpt::MemoryHeapSize));
 

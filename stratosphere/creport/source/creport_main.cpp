@@ -68,7 +68,7 @@ void __libnx_initheap(void) {
 }
 
 void __appInit(void) {
-    hos::SetVersionForLibnx();
+    hos::InitializeForStratosphere();
 
     sm::DoWithSession([&]() {
         R_ABORT_UNLESS(fsInitialize());
@@ -85,6 +85,10 @@ void __appExit(void) {
 static creport::CrashReport g_crash_report;
 
 int main(int argc, char **argv) {
+    /* Set thread name. */
+    os::SetThreadNamePointer(os::GetCurrentThread(), AMS_GET_SYSTEM_THREAD_NAME(creport, Main));
+    AMS_ASSERT(os::GetThreadPriority(os::GetCurrentThread()) == AMS_GET_SYSTEM_THREAD_PRIORITY(creport, Main));
+
     /* Validate arguments. */
     if (argc < 2) {
         return EXIT_FAILURE;
@@ -110,9 +114,9 @@ int main(int argc, char **argv) {
     /* Try to terminate the process. */
     if (hos::GetVersion() >= hos::Version_10_0_0) {
         /* On 10.0.0+, use pgl to terminate. */
-        sm::ScopedServiceHolder<pglInitialize, pglExit> pgl_holder;
+        sm::ScopedServiceHolder<pgl::Initialize, pgl::Finalize> pgl_holder;
         if (pgl_holder) {
-            pglTerminateProcess(static_cast<u64>(crashed_pid));
+            pgl::TerminateProcess(crashed_pid);
         }
     } else {
         /* On < 10.0.0, use ns:dev to terminate. */

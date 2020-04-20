@@ -68,7 +68,7 @@ void __libnx_initheap(void) {
 }
 
 void __appInit(void) {
-    hos::SetVersionForLibnx();
+    hos::InitializeForStratosphere();
 
     /* Initialize services we need. */
     sm::DoWithSession([&]() {
@@ -115,6 +115,10 @@ namespace {
 
 int main(int argc, char **argv)
 {
+    /* Set thread name. */
+    os::SetThreadNamePointer(os::GetCurrentThread(), AMS_GET_SYSTEM_THREAD_NAME(ldr, Main));
+    AMS_ASSERT(os::GetThreadPriority(os::GetCurrentThread()) == AMS_GET_SYSTEM_THREAD_PRIORITY(ldr, Main));
+
     /* Configure development. */
     /* NOTE: Nintendo really does call the getter function three times instead of caching the value. */
     ldr::SetDevelopmentForAcidProductionCheck(spl::IsDevelopmentHardware());

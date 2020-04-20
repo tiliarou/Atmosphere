@@ -86,7 +86,7 @@ void __libnx_initheap(void) {
 }
 
 void __appInit(void) {
-    hos::SetVersionForLibnx();
+    hos::InitializeForStratosphere();
 
     /* Initialize services we need (TODO: NCM) */
     sm::DoWithSession([&]() {
@@ -107,6 +107,10 @@ void __appExit(void) {
 
 int main(int argc, char **argv)
 {
+    /* Set thread name. */
+    os::SetThreadNamePointer(os::GetCurrentThread(), AMS_GET_SYSTEM_THREAD_NAME(boot, Main));
+    AMS_ASSERT(os::GetThreadPriority(os::GetCurrentThread()) == AMS_GET_SYSTEM_THREAD_PRIORITY(boot, Main));
+
     /* Change voltage from 3.3v to 1.8v for select devices. */
     boot::ChangeGpioVoltageTo1_8v();
 
@@ -122,7 +126,7 @@ int main(int argc, char **argv)
     const auto hw_type = spl::GetHardwareType();
     if (hw_type != spl::HardwareType::Copper && hw_type != spl::HardwareType::Calcio) {
         /* Display splash screen for two seconds. */
-        boot::ShowSplashScreen();
+        //boot::ShowSplashScreen();
 
         /* Check that the battery has enough to boot. */
         boot::CheckBatteryCharge();

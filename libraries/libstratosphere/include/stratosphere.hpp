@@ -19,6 +19,9 @@
 /* libvapours (pulls in util, svc, results). */
 #include <vapours.hpp>
 
+/* Libstratosphere definitions. */
+#include <stratosphere/ams/impl/ams_system_thread_definitions.hpp>
+
 /* Libstratosphere-only utility. */
 #include <stratosphere/util.hpp>
 
@@ -51,6 +54,7 @@
 #include <stratosphere/ncm.hpp>
 #include <stratosphere/nim.hpp>
 #include <stratosphere/patcher.hpp>
+#include <stratosphere/pgl.hpp>
 #include <stratosphere/psc.hpp>
 #include <stratosphere/pm.hpp>
 #include <stratosphere/reg.hpp>
