@@ -128,7 +128,7 @@ namespace {
 }
 
 void __appInit(void) {
-    hos::SetVersionForLibnx();
+    hos::InitializeForStratosphere();
 
     sm::DoWithSession([&]() {
         R_ABORT_UNLESS(fsprInitialize());
@@ -184,13 +184,17 @@ namespace {
 
 int main(int argc, char **argv)
 {
+    /* Set thread name. */
+    os::SetThreadNamePointer(os::GetCurrentThread(), AMS_GET_SYSTEM_THREAD_NAME(pm, Main));
+    AMS_ASSERT(os::GetThreadPriority(os::GetCurrentThread()) == AMS_GET_SYSTEM_THREAD_PRIORITY(pm, Main));
+
     /* Initialize process manager implementation. */
     R_ABORT_UNLESS(pm::impl::InitializeProcessManager());
 
     /* Create Services. */
     /* NOTE: Extra sessions have been added to pm:bm and pm:info to facilitate access by the rest of stratosphere. */
     /* Also Note: PM was rewritten in 5.0.0, so the shell and dmnt services are different before/after. */
-    if (hos::GetVersion() >= hos::Version_500) {
+    if (hos::GetVersion() >= hos::Version_5_0_0) {
         R_ABORT_UNLESS((g_server_manager.RegisterServer<pm::shell::ShellService>(ShellServiceName, ShellMaxSessions)));
         R_ABORT_UNLESS((g_server_manager.RegisterServer<pm::dmnt::DebugMonitorService>(DebugMonitorServiceName, DebugMonitorMaxSessions)));
     } else {

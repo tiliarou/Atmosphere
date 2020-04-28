@@ -192,10 +192,10 @@ namespace ams::svc {
     };
 
     enum CodeMemoryOperation : u32 {
-        CodeMemoryOperation_MapOwner   = 0,
-        CodeMemoryOperation_MapSlave   = 1,
-        CodeMemoryOperation_UnmapOwner = 2,
-        CodeMemoryOperation_UnmapSlave = 3,
+        CodeMemoryOperation_Map            = 0,
+        CodeMemoryOperation_MapToOwner     = 1,
+        CodeMemoryOperation_Unmap          = 2,
+        CodeMemoryOperation_UnmapFromOwner = 3,
     };
 
     /* Synchronization types. */
@@ -279,8 +279,14 @@ namespace ams::svc {
         ThreadActivity_Paused   = 1,
     };
 
-    constexpr s32 LowestThreadPriority  = 63;
-    constexpr s32 HighestThreadPriority = 0;
+    constexpr inline s32 IdealCoreDontCare        = -1;
+    constexpr inline s32 IdealCoreUseProcessValue = -2;
+    constexpr inline s32 IdealCoreNoUpdate        = -3;
+
+    constexpr inline s32 LowestThreadPriority  = 63;
+    constexpr inline s32 HighestThreadPriority = 0;
+
+    constexpr inline s32 SystemThreadPriorityHighest = 16;
 
     /* Process types. */
     enum ProcessInfoType : u32 {
