@@ -13,19 +13,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
-#include <stratosphere/sf/sf_common.hpp>
+#include <stratosphere/fs/fs_common.hpp>
+#include <stratosphere/fs/fs_filesystem.hpp>
 
-namespace ams::os {
+namespace ams::fs {
 
-    struct ThreadType;
+    using FileTimeStampRaw = ::FsTimeStampRaw;
 
-}
+    namespace impl {
 
-namespace ams::sf {
+        Result GetFileTimeStampRawForDebug(FileTimeStampRaw *out, const char *path);
 
-    u8 GetFsInlineContext(os::ThreadType *thread);
-    u8 SetFsInlineContext(os::ThreadType *thread, u8 ctx);
+    }
+
+    Result GetFileTimeStampRawForDebug(FileTimeStampRaw *out, const char *path);
 
 }
