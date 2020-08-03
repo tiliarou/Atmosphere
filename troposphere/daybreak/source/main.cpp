@@ -26,10 +26,6 @@ extern "C" {
     void userAppInit(void) {
         Result rc = 0;
 
-        if (R_FAILED(rc = amssuInitialize())) {
-            fatalThrow(rc);
-        }
-
         if (R_FAILED(rc = romfsInit())) {
             fatalThrow(rc);
         }
@@ -42,6 +38,14 @@ extern "C" {
             fatalThrow(rc);
         }
 
+        if (R_FAILED(rc = splInitialize())) {
+            fatalThrow(rc);
+        }
+
+        if (R_FAILED(rc = nsInitialize())) {
+            fatalThrow(rc);
+        }
+
         if (R_FAILED(rc = hiddbgInitialize())) {
             fatalThrow(rc);
         }
@@ -50,6 +54,8 @@ extern "C" {
 
     void userAppExit(void) {
         hiddbgExit();
+        nsExit();
+        splExit();
         plExit();
         spsmExit();
         romfsExit();

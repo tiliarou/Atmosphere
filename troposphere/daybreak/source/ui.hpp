@@ -82,6 +82,44 @@ namespace dbk {
             virtual void Draw(NVGcontext *vg, u64 ns) = 0;
     };
 
+    class AlertMenu : public Menu {
+        protected:
+            static constexpr float WindowWidth           = 600.0f;
+            static constexpr float WindowHeight          = 214.0f;
+            static constexpr float TitleGap              = 90.0f;
+            static constexpr float SubTextHeight         = 24.0f;
+        protected:
+            char m_text[0x100];
+            char m_subtext[0x100];
+            char m_result_text[0x20];
+            Result m_rc;
+        public:
+            AlertMenu(std::shared_ptr<Menu> prev_menu, const char *text, const char *subtext, Result rc = 0);
+
+            virtual void Draw(NVGcontext *vg, u64 ns) override;
+    };
+
+    class ErrorMenu : public AlertMenu {
+        private:
+            static constexpr u32 ExitButtonId = 0;
+        public:
+            ErrorMenu(const char *text, const char *subtext, Result rc = 0);
+
+            virtual void Update(u64 ns) override;
+    };
+
+    class WarningMenu : public AlertMenu {
+        private:
+            static constexpr u32 BackButtonId     = 0;
+            static constexpr u32 ContinueButtonId = 1;
+        private:
+            const std::shared_ptr<Menu> m_next_menu;
+        public:
+            WarningMenu(std::shared_ptr<Menu> prev_menu, std::shared_ptr<Menu> next_menu, const char *text, const char *subtext, Result rc = 0);
+
+            virtual void Update(u64 ns) override;
+    };
+
     class MainMenu : public Menu {
         private:
             static constexpr u32 InstallButtonId = 0;
@@ -90,9 +128,6 @@ namespace dbk {
             static constexpr float WindowWidth             = 400.0f;
             static constexpr float WindowHeight            = 240.0f;
             static constexpr float TitleGap                = 90.0f;
-            static constexpr float ButtonHorizontalPadding = 20.0f;
-            static constexpr float ButtonHeight            = 60.0f;
-            static constexpr float ButtonVerticalGap       = 10.0f;
         public:
             MainMenu();
 
@@ -145,14 +180,7 @@ namespace dbk {
             static constexpr float WindowWidth           = 600.0f;
             static constexpr float WindowHeight          = 600.0f;
             static constexpr float TitleGap              = 90.0f;
-            static constexpr float BottomGap             = 20.0f;
-            static constexpr float HorizontalGap         = 20.0f;
             static constexpr float TextAreaHeight        = 410.0f;
-            static constexpr float TextHorizontalInset   = 6.0f;
-            static constexpr float TextVerticalInset     = 6.0f;
-            static constexpr float ButtonHeight          = 60.0f;
-            static constexpr float ButtonHorizontalGap   = 10.0f;
-            static constexpr float ButtonWidth           = (WindowWidth - HorizontalGap * 2.0f) / 2.0f - ButtonHorizontalGap;
         private:
             AmsSuUpdateInformation m_update_info;
             AmsSuUpdateValidationInfo m_validation_info;
@@ -169,18 +197,29 @@ namespace dbk {
             virtual void Draw(NVGcontext *vg, u64 ns) override;
     };
 
+    class ChooseResetMenu : public Menu {
+        private:
+            static constexpr u32 ResetToFactorySettingsButtonId = 0;
+            static constexpr u32 PreserveSettingsButtonId = 1;
+
+            static constexpr float WindowWidth           = 600.0f;
+            static constexpr float WindowHeight          = 170.0f;
+            static constexpr float TitleGap              = 90.0f;
+        public:
+            ChooseResetMenu(std::shared_ptr<Menu> prev_menu);
+
+            virtual void Update(u64 ns) override;
+            virtual void Draw(NVGcontext *vg, u64 ns) override;
+    };
+
     class ChooseExfatMenu : public Menu {
         private:
             static constexpr u32 Fat32ButtonId = 0;
             static constexpr u32 ExFatButtonId = 1;
 
             static constexpr float WindowWidth           = 600.0f;
-            static constexpr float WindowHeight          = 180.0f;
+            static constexpr float WindowHeight          = 170.0f;
             static constexpr float TitleGap              = 90.0f;
-            static constexpr float ButtonHeight          = 60.0f;
-            static constexpr float ButtonHorizontalInset = 20.0f;
-            static constexpr float ButtonHorizontalGap   = 10.0f;
-            static constexpr float ButtonWidth           = (WindowWidth - ButtonHorizontalInset * 2.0f) / 2.0f - ButtonHorizontalGap;
         public:
             ChooseExfatMenu(std::shared_ptr<Menu> prev_menu);
 
@@ -205,17 +244,9 @@ namespace dbk {
             static constexpr float WindowWidth           = 600.0f;
             static constexpr float WindowHeight          = 600.0f;
             static constexpr float TitleGap              = 120.0f;
-            static constexpr float BottomGap             = 20.0f;
-            static constexpr float HorizontalGap         = 20.0f;
             static constexpr float ProgressTextHeight    = 20.0f;
             static constexpr float ProgressBarHeight     = 30.0f;
-            static constexpr float VerticalGap           = 10.0f;
             static constexpr float TextAreaHeight        = 320.0f;
-            static constexpr float TextHorizontalInset   = 6.0f;
-            static constexpr float TextVerticalInset     = 6.0f;
-            static constexpr float ButtonHeight          = 60.0f;
-            static constexpr float ButtonHorizontalGap   = 10.0f;
-            static constexpr float ButtonWidth           = (WindowWidth - HorizontalGap * 2.0f) / 2.0f - ButtonHorizontalGap;
 
             static constexpr size_t UpdateTaskBufferSize = 0x100000;
         private:
