@@ -22,7 +22,7 @@ namespace ams::kern::init {
     #define FOREACH_SLAB_TYPE(HANDLER, ...)                                                                                     \
         HANDLER(KProcess,            (SLAB_COUNT(KProcess)),                                                    ## __VA_ARGS__) \
         HANDLER(KThread,             (SLAB_COUNT(KThread)),                                                     ## __VA_ARGS__) \
-        HANDLER(KLinkedListNode,     (SLAB_COUNT(KThread) * 17),                                                ## __VA_ARGS__) \
+        HANDLER(KLinkedListNode,     (SLAB_COUNT(KThread)),                                                     ## __VA_ARGS__) \
         HANDLER(KEvent,              (SLAB_COUNT(KEvent)),                                                      ## __VA_ARGS__) \
         HANDLER(KInterruptEvent,     (SLAB_COUNT(KInterruptEvent)),                                             ## __VA_ARGS__) \
         HANDLER(KInterruptEventTask, (SLAB_COUNT(KInterruptEvent)),                                             ## __VA_ARGS__) \
@@ -39,7 +39,9 @@ namespace ams::kern::init {
         HANDLER(KObjectName,         (SLAB_COUNT(KObjectName)),                                                 ## __VA_ARGS__) \
         HANDLER(KResourceLimit,      (SLAB_COUNT(KResourceLimit)),                                              ## __VA_ARGS__) \
         HANDLER(KEventInfo,          (SLAB_COUNT(KThread) + SLAB_COUNT(KDebug)),                                ## __VA_ARGS__) \
-        HANDLER(KDebug,              (SLAB_COUNT(KDebug)),                                                      ## __VA_ARGS__)
+        HANDLER(KDebug,              (SLAB_COUNT(KDebug)),                                                      ## __VA_ARGS__) \
+        HANDLER(KAlpha,              (SLAB_COUNT(KAlpha)),                                                      ## __VA_ARGS__) \
+        HANDLER(KBeta,               (SLAB_COUNT(KBeta)),                                                       ## __VA_ARGS__)
 
     namespace {
 
@@ -68,12 +70,14 @@ namespace ams::kern::init {
         constexpr size_t SlabCountKObjectName           = 7;
         constexpr size_t SlabCountKResourceLimit        = 5;
         constexpr size_t SlabCountKDebug                = cpu::NumCores;
+        constexpr size_t SlabCountKAlpha                = 1;
+        constexpr size_t SlabCountKBeta                 = 6;
 
         constexpr size_t SlabCountExtraKThread          = 160;
 
         namespace test {
 
-            constexpr size_t RequiredSizeForExtraThreadCount = SlabCountExtraKThread * (sizeof(KThread) + (sizeof(KLinkedListNode) * 17) + (sizeof(KThreadLocalPage) / 8) + sizeof(KEventInfo));
+            constexpr size_t RequiredSizeForExtraThreadCount = SlabCountExtraKThread * (sizeof(KThread) + sizeof(KLinkedListNode) + (sizeof(KThreadLocalPage) / 8) + sizeof(KEventInfo));
             static_assert(RequiredSizeForExtraThreadCount <= KernelSlabHeapAdditionalSize);
 
         }
@@ -94,6 +98,8 @@ namespace ams::kern::init {
             .num_KObjectName            = SlabCountKObjectName,
             .num_KResourceLimit         = SlabCountKResourceLimit,
             .num_KDebug                 = SlabCountKDebug,
+            .num_KAlpha                 = SlabCountKAlpha,
+            .num_KBeta                  = SlabCountKBeta,
         };
 
         template<typename T>
@@ -158,11 +164,8 @@ namespace ams::kern::init {
 
         /* Allocate memory for the slab. */
         constexpr auto AllocateOption = KMemoryManager::EncodeOption(KMemoryManager::Pool_System, KMemoryManager::Direction_FromFront);
-        const KVirtualAddress slab_address = Kernel::GetMemoryManager().AllocateContinuous(num_pages, 1, AllocateOption);
+        const KVirtualAddress slab_address = Kernel::GetMemoryManager().AllocateAndOpenContinuous(num_pages, 1, AllocateOption);
         MESOSPHERE_ABORT_UNLESS(slab_address != Null<KVirtualAddress>);
-
-        /* Open references to the slab. */
-        Kernel::GetMemoryManager().Open(slab_address, num_pages);
 
         /* Initialize the slabheap. */
         KPageBuffer::InitializeSlabHeap(GetVoidPointer(slab_address), slab_size);

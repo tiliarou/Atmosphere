@@ -26,14 +26,14 @@ namespace ams::kern {
         constexpr size_t CarveoutSizeMax        = 512_MB - CarveoutAlignment;
 
         ALWAYS_INLINE bool SetupUartPhysicalMemoryRegion() {
-            #if   defined(MESOSPHERE_DEBUG_LOG_USE_UART_A)
-                return KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(0x70006000, 0x40,  KMemoryRegionType_Uart | KMemoryRegionAttr_ShouldKernelMap);
-            #elif defined(MESOSPHERE_DEBUG_LOG_USE_UART_B)
-                return KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(0x70006040, 0x40,  KMemoryRegionType_Uart | KMemoryRegionAttr_ShouldKernelMap);
-            #elif defined(MESOSPHERE_DEBUG_LOG_USE_UART_C)
-                return KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(0x70006200, 0x100, KMemoryRegionType_Uart | KMemoryRegionAttr_ShouldKernelMap);
-            #elif defined(MESOSPHERE_DEBUG_LOG_USE_UART_D)
-                return KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(0x70006300, 0x100, KMemoryRegionType_Uart | KMemoryRegionAttr_ShouldKernelMap);
+            #if   defined(MESOSPHERE_DEBUG_LOG_USE_UART)
+                switch (KSystemControl::Init::GetDebugLogUartPort()) {
+                    case 0:  return KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(0x70006000, 0x40,  KMemoryRegionType_Uart | KMemoryRegionAttr_ShouldKernelMap);
+                    case 1:  return KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(0x70006040, 0x40,  KMemoryRegionType_Uart | KMemoryRegionAttr_ShouldKernelMap);
+                    case 2:  return KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(0x70006200, 0x100, KMemoryRegionType_Uart | KMemoryRegionAttr_ShouldKernelMap);
+                    case 3:  return KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(0x70006300, 0x100, KMemoryRegionType_Uart | KMemoryRegionAttr_ShouldKernelMap);
+                    default: return false;
+                }
             #elif defined(MESOSPHERE_DEBUG_LOG_USE_IRAM_RINGBUFFER)
                 return true;
             #else
@@ -55,6 +55,7 @@ namespace ams::kern {
             MESOSPHERE_INIT_ABORT_UNLESS(KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(start, size, phys_type, attr));
             const KMemoryRegion *phys = KMemoryLayout::GetPhysicalMemoryRegionTree().FindByTypeAndAttribute(phys_type, attr);
             MESOSPHERE_INIT_ABORT_UNLESS(phys != nullptr);
+            MESOSPHERE_INIT_ABORT_UNLESS(phys->GetEndAddress() != 0);
             MESOSPHERE_INIT_ABORT_UNLESS(KMemoryLayout::GetVirtualMemoryRegionTree().Insert(phys->GetPairAddress(), size, virt_type, attr));
         }
 
@@ -99,11 +100,19 @@ namespace ams::kern {
             /* Insert blocks into the tree. */
             MESOSPHERE_INIT_ABORT_UNLESS(KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(GetInteger(physical_memory_base_address), intended_memory_size,  KMemoryRegionType_Dram));
             MESOSPHERE_INIT_ABORT_UNLESS(KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(GetInteger(physical_memory_base_address), ReservedEarlyDramSize, KMemoryRegionType_DramReservedEarly));
+
+            /* Insert the KTrace block at the end of Dram, if KTrace is enabled. */
+            static_assert(!IsKTraceEnabled || KTraceBufferSize > 0);
+            if constexpr (IsKTraceEnabled) {
+                const KPhysicalAddress ktrace_buffer_phys_addr = physical_memory_base_address + intended_memory_size - KTraceBufferSize;
+                MESOSPHERE_INIT_ABORT_UNLESS(KMemoryLayout::GetPhysicalMemoryRegionTree().Insert(GetInteger(ktrace_buffer_phys_addr), KTraceBufferSize, KMemoryRegionType_KernelTraceBuffer));
+            }
         }
 
         void SetupPoolPartitionMemoryRegions() {
             /* Start by identifying the extents of the DRAM memory region. */
             const auto dram_extents = KMemoryLayout::GetMainMemoryPhysicalExtents();
+            MESOSPHERE_INIT_ABORT_UNLESS(dram_extents.GetEndAddress() != 0);
 
             /* Determine the end of the pool region. */
             const uintptr_t pool_end = dram_extents.GetEndAddress() - KTraceBufferSize;

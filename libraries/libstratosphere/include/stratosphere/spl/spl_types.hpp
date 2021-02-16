@@ -106,12 +106,12 @@ namespace ams::spl {
     }
 
     enum class HardwareType {
-        Icosa   = 0,
-        Copper  = 1,
-        Hoag    = 2,
-        Iowa    = 3,
-        Calcio  = 4,
-        _Five_  = 5,
+        Icosa  = 0,
+        Copper = 1,
+        Hoag   = 2,
+        Iowa   = 3,
+        Calcio = 4,
+        Aula   = 5,
     };
 
     enum SocType {
@@ -150,6 +150,15 @@ namespace ams::spl {
         };
     };
     static_assert(sizeof(BootReasonValue) == sizeof(u32), "BootReasonValue definition!");
+
+    enum BootReason {
+        BootReason_Unknown   = 0,
+        BootReason_AcOk      = 1,
+        BootReason_OnKey     = 2,
+        BootReason_RtcAlarm1 = 3,
+        BootReason_RtcAlarm2 = 4,
+    };
+
     #pragma pack(push, 1)
 
     struct AesKey {

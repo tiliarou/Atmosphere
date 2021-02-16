@@ -15,8 +15,10 @@ endif
 
 endif
 
+ATMOSPHERE_BUILD_SETTINGS ?=
+
 export ATMOSPHERE_DEFINES  := -DATMOSPHERE
-export ATMOSPHERE_SETTINGS := -fPIE -g
+export ATMOSPHERE_SETTINGS := -fPIE -g $(ATMOSPHERE_BUILD_SETTINGS)
 export ATMOSPHERE_CFLAGS   := -Wall -ffunction-sections -fdata-sections -fno-strict-aliasing -fwrapv  \
                               -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector \
                               -Wno-format-truncation -Wno-format-zero-length -Wno-stringop-truncation
@@ -106,15 +108,17 @@ BUILD        := build
 DATA         := data
 INCLUDES     := include
 
-GENERAL_SOURCE_DIRS=$1 $(foreach d,$(filter-out $1/arch $1/board $1/os $1/cpu $1,$(wildcard $1/*)),$(if $(wildcard $d/.),$(call DIR_WILDCARD,$d) $d,))
+GENERAL_SOURCE_DIRS=$1 $(foreach d,$(filter-out $1/arch $1/board $1/os $1/cpu $1,$(wildcard $1/*)),$(if $(wildcard $d/.),$(filter-out $d,$(call GENERAL_SOURCE_DIRS,$d)) $d,))
 SPECIFIC_SOURCE_DIRS=$(if $(wildcard $1/$2/$3/.*),$1/$2/$3 $(call DIR_WILDCARD,$1/$2/$3),$(if $(wildcard $1/$2/generic/.*), $1/$2/generic $(call DIR_WILDCARD,$1/$2/generic),))
 UNFILTERED_SOURCE_DIRS=$1 $(foreach d,$(wildcard $1/*),$(if $(wildcard $d/.),$(call DIR_WILDCARD,$d) $d,))
 
-ALL_SOURCE_DIRS=$(call GENERAL_SOURCE_DIRS,$1) \
-                $(call SPECIFIC_SOURCE_DIRS,$1,arch,$(ATMOSPHERE_ARCH_DIR)) \
-                $(call SPECIFIC_SOURCE_DIRS,$1,board,$(ATMOSPHERE_BOARD_DIR)) \
-                $(call SPECIFIC_SOURCE_DIRS,$1,os,$(ATMOSPHERE_OS_DIR)) \
-                $(call SPECIFIC_SOURCE_DIRS,$1,cpu,$(ATMOSPHERE_ARCH_DIR)/$(ATMOSPHERE_CPU_DIR))
+ALL_SOURCE_DIRS=$(foreach d,$(call GENERAL_SOURCE_DIRS,$1), \
+                    $d \
+                    $(call SPECIFIC_SOURCE_DIRS,$d,arch,$(ATMOSPHERE_ARCH_DIR)) \
+                    $(call SPECIFIC_SOURCE_DIRS,$d,board,$(ATMOSPHERE_BOARD_DIR)) \
+                    $(call SPECIFIC_SOURCE_DIRS,$d,os,$(ATMOSPHERE_OS_DIR)) \
+                    $(call SPECIFIC_SOURCE_DIRS,$d,cpu,$(ATMOSPHERE_ARCH_DIR)/$(ATMOSPHERE_CPU_DIR)) \
+                )
 
 SOURCES      ?= $(call ALL_SOURCE_DIRS,source)
 
@@ -132,10 +136,15 @@ FIND_SOURCE_FILES=$(foreach dir,$1,$(filter-out $(notdir $(wildcard $(dir)/*.arc
                   $(foreach dir,$1,$(call FIND_SPECIFIC_SOURCE_FILES,$(dir),os,$(ATMOSPHERE_OS_NAME),$2)) \
                   $(foreach dir,$1,$(call FIND_SPECIFIC_SOURCE_FILES_EX,$(dir),cpu,$(ATMOSPHERE_CPU_NAME) $(ATMOSPHERE_CPU_EXTENSIONS),$2))
 
+ATMOSPHERE_GCH_IDENTIFIER ?= ams_placeholder_gch_identifier
+
 #---------------------------------------------------------------------------------
 # Rules for compiling pre-compiled headers
 #---------------------------------------------------------------------------------
-%.gch: %.hpp
-	@echo $<
-	$(CXX) -w -x c++-header -MMD -MP -MF $(DEPSDIR)/$*.d $(CXXFLAGS) -c $< -o $@ $(ERROR_FILTER)
-	@cp $@ $(<).gch
+%.hpp.gch/$(ATMOSPHERE_GCH_IDENTIFIER): %.hpp | %.hpp.gch
+	@echo Precompiling $(notdir $<) for $(ATMOSPHERE_GCH_IDENTIFIER)
+	$(SILENTCMD)$(CXX) -w -x c++-header -MMD -MP -MQ$@ -MF $(DEPSDIR)/$(notdir $*).d $(CXXFLAGS) -c $< -o $@ $(ERROR_FILTER)
+
+%.hpp.gch: %.hpp
+	@echo Precompiling $(notdir $<)
+	$(SILENTCMD)$(CXX) -w -x c++-header -MMD -MP -MQ$@ -MF $(DEPSDIR)/$(notdir $*).d $(CXXFLAGS) -c $< -o $@ $(ERROR_FILTER)

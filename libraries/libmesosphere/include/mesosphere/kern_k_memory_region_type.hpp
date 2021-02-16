@@ -52,73 +52,73 @@ namespace ams::kern {
             private:
                 using ValueType = typename std::underlying_type<KMemoryRegionType>::type;
             private:
-                ValueType value;
-                size_t next_bit;
-                bool finalized;
-                bool sparse_only;
-                bool dense_only;
+                ValueType m_value;
+                size_t m_next_bit;
+                bool m_finalized;
+                bool m_sparse_only;
+                bool m_dense_only;
             private:
-                consteval KMemoryRegionTypeValue(ValueType v) : value(v), next_bit(0), finalized(false), sparse_only(false), dense_only(false) { /* ... */ }
+                consteval KMemoryRegionTypeValue(ValueType v) : m_value(v), m_next_bit(0), m_finalized(false), m_sparse_only(false), m_dense_only(false) { /* ... */ }
             public:
                 consteval KMemoryRegionTypeValue() : KMemoryRegionTypeValue(0) { /* ... */ }
 
-                consteval operator KMemoryRegionType() const { return static_cast<KMemoryRegionType>(this->value); }
-                consteval ValueType GetValue() const { return this->value; }
+                consteval operator KMemoryRegionType() const { return static_cast<KMemoryRegionType>(m_value); }
+                consteval ValueType GetValue() const { return m_value; }
 
-                consteval const KMemoryRegionTypeValue &Finalize()      { this->finalized = true;   return *this; }
-                consteval const KMemoryRegionTypeValue &SetSparseOnly() { this->sparse_only = true; return *this; }
-                consteval const KMemoryRegionTypeValue &SetDenseOnly() { this->dense_only = true; return *this; }
+                consteval const KMemoryRegionTypeValue &Finalize()      { m_finalized = true;   return *this; }
+                consteval const KMemoryRegionTypeValue &SetSparseOnly() { m_sparse_only = true; return *this; }
+                consteval const KMemoryRegionTypeValue &SetDenseOnly()  { m_dense_only = true; return *this; }
 
-                consteval KMemoryRegionTypeValue &SetAttribute(KMemoryRegionAttr attr) { AMS_ASSUME(!this->finalized); this->value |= attr; return *this; }
+                consteval KMemoryRegionTypeValue &SetAttribute(KMemoryRegionAttr attr) { AMS_ASSUME(!m_finalized); m_value |= attr; return *this; }
 
                 consteval KMemoryRegionTypeValue DeriveInitial(size_t i, size_t next = BITSIZEOF(ValueType)) const {
-                    AMS_ASSUME(!this->finalized);
-                    AMS_ASSUME(!this->value);
-                    AMS_ASSUME(!this->next_bit);
+                    AMS_ASSUME(!m_finalized);
+                    AMS_ASSUME(!m_value);
+                    AMS_ASSUME(!m_next_bit);
                     AMS_ASSUME(next > i);
 
                     KMemoryRegionTypeValue new_type = *this;
-                    new_type.value    = (ValueType{1} << i);
-                    new_type.next_bit = next;
+                    new_type.m_value    = (ValueType{1} << i);
+                    new_type.m_next_bit = next;
                     return new_type;
                 }
 
                 consteval KMemoryRegionTypeValue DeriveAttribute(KMemoryRegionAttr attr) const {
-                    AMS_ASSUME(!this->finalized);
+                    AMS_ASSUME(!m_finalized);
 
                     KMemoryRegionTypeValue new_type = *this;
-                    new_type.value |= attr;
+                    new_type.m_value |= attr;
                     return new_type;
                 }
 
                 consteval KMemoryRegionTypeValue DeriveTransition(size_t ofs = 0, size_t adv = 1) const {
-                    AMS_ASSUME(!this->finalized);
+                    AMS_ASSUME(!m_finalized);
                     AMS_ASSUME(ofs < adv);
-                    AMS_ASSUME(this->next_bit + adv <= BITSIZEOF(ValueType));
+                    AMS_ASSUME(m_next_bit + adv <= BITSIZEOF(ValueType));
 
                     KMemoryRegionTypeValue new_type = *this;
-                    new_type.value |= (ValueType{1} << (this->next_bit + ofs));
-                    new_type.next_bit += adv;
+                    new_type.m_value |= (ValueType{1} << (m_next_bit + ofs));
+                    new_type.m_next_bit += adv;
                     return new_type;
                 }
 
                 consteval KMemoryRegionTypeValue DeriveSparse(size_t ofs, size_t n, size_t i) const {
-                    AMS_ASSUME(!this->finalized);
-                    AMS_ASSUME(!this->dense_only);
-                    AMS_ASSUME(this->next_bit + ofs + n + 1 <= BITSIZEOF(ValueType));
+                    AMS_ASSUME(!m_finalized);
+                    AMS_ASSUME(!m_dense_only);
+                    AMS_ASSUME(m_next_bit + ofs + n + 1 <= BITSIZEOF(ValueType));
                     AMS_ASSUME(i < n);
 
                     KMemoryRegionTypeValue new_type = *this;
-                    new_type.value |= (ValueType{1} << (this->next_bit + ofs));
-                    new_type.value |= (ValueType{1} << (this->next_bit + ofs + 1 + i));
-                    new_type.next_bit += ofs + n + 1;
+                    new_type.m_value |= (ValueType{1} << (m_next_bit + ofs));
+                    new_type.m_value |= (ValueType{1} << (m_next_bit + ofs + 1 + i));
+                    new_type.m_next_bit += ofs + n + 1;
                     return new_type;
                 }
 
                 consteval KMemoryRegionTypeValue Derive(size_t n, size_t i) const {
-                    AMS_ASSUME(!this->finalized);
-                    AMS_ASSUME(!this->sparse_only);
-                    AMS_ASSUME(this->next_bit + BitsForDeriveDense(n) <= BITSIZEOF(ValueType));
+                    AMS_ASSUME(!m_finalized);
+                    AMS_ASSUME(!m_sparse_only);
+                    AMS_ASSUME(m_next_bit + BitsForDeriveDense(n) <= BITSIZEOF(ValueType));
                     AMS_ASSUME(i < n);
 
                     size_t low = 0, high = 1;
@@ -132,23 +132,23 @@ namespace ams::kern {
 
 
                     KMemoryRegionTypeValue new_type = *this;
-                    new_type.value |= (ValueType{1} << (this->next_bit + low));
-                    new_type.value |= (ValueType{1} << (this->next_bit + high));
-                    new_type.next_bit += BitsForDeriveDense(n);
+                    new_type.m_value |= (ValueType{1} << (m_next_bit + low));
+                    new_type.m_value |= (ValueType{1} << (m_next_bit + high));
+                    new_type.m_next_bit += BitsForDeriveDense(n);
                     return new_type;
                 }
 
                 consteval KMemoryRegionTypeValue Advance(size_t n) const {
-                    AMS_ASSUME(!this->finalized);
-                    AMS_ASSUME(this->next_bit + n <= BITSIZEOF(ValueType));
+                    AMS_ASSUME(!m_finalized);
+                    AMS_ASSUME(m_next_bit + n <= BITSIZEOF(ValueType));
 
                     KMemoryRegionTypeValue new_type = *this;
-                    new_type.next_bit += n;
+                    new_type.m_next_bit += n;
                     return new_type;
                 }
 
                 constexpr ALWAYS_INLINE bool IsAncestorOf(ValueType v) const {
-                    return (this->value | v) == v;
+                    return (m_value | v) == v;
                 }
         };
 
@@ -156,12 +156,13 @@ namespace ams::kern {
 
     constexpr inline const auto KMemoryRegionType_None = impl::KMemoryRegionTypeValue();
 
-    constexpr inline const auto KMemoryRegionType_Kernel          = KMemoryRegionType_None.DeriveInitial(0, 2);
-    constexpr inline const auto KMemoryRegionType_Dram            = KMemoryRegionType_None.DeriveInitial(1, 2);
-    constexpr inline const auto KMemoryRegionType_CoreLocalRegion = KMemoryRegionType_None.DeriveInitial(2).Finalize();
-    static_assert(KMemoryRegionType_Kernel         .GetValue() == 0x1);
-    static_assert(KMemoryRegionType_Dram           .GetValue() == 0x2);
-    static_assert(KMemoryRegionType_CoreLocalRegion.GetValue() == 0x4);
+    constexpr inline const auto KMemoryRegionType_Kernel = KMemoryRegionType_None.DeriveInitial(0, 2);
+    constexpr inline const auto KMemoryRegionType_Dram   = KMemoryRegionType_None.DeriveInitial(1, 2);
+    static_assert(KMemoryRegionType_Kernel.GetValue() == 0x1);
+    static_assert(KMemoryRegionType_Dram  .GetValue() == 0x2);
+
+    /* constexpr inline const auto KMemoryRegionType_CoreLocalRegion = KMemoryRegionType_None.DeriveInitial(2).Finalize(); */
+    /* static_assert(KMemoryRegionType_CoreLocalRegion.GetValue() == 0x4); */
 
     constexpr inline const auto KMemoryRegionType_DramKernelBase   = KMemoryRegionType_Dram.DeriveSparse(0, 3, 0).SetAttribute(KMemoryRegionAttr_NoUserMap).SetAttribute(KMemoryRegionAttr_CarveoutProtected);
     constexpr inline const auto KMemoryRegionType_DramReservedBase = KMemoryRegionType_Dram.DeriveSparse(0, 3, 1);
@@ -183,14 +184,13 @@ namespace ams::kern {
     constexpr inline const auto KMemoryRegionType_DramReservedEarly = KMemoryRegionType_DramReservedBase.DeriveAttribute(KMemoryRegionAttr_NoUserMap);
     static_assert(KMemoryRegionType_DramReservedEarly.GetValue() == (0x16 | KMemoryRegionAttr_NoUserMap));
 
-                                                                                              /* UNUSED: DeriveSparse(0, 3, 0); */
+    constexpr inline const auto KMemoryRegionType_KernelTraceBuffer = KMemoryRegionType_DramReservedBase.DeriveSparse(0, 3, 0).SetAttribute(KMemoryRegionAttr_LinearMapped).SetAttribute(KMemoryRegionAttr_UserReadOnly);
     constexpr inline const auto KMemoryRegionType_OnMemoryBootImage = KMemoryRegionType_DramReservedBase.DeriveSparse(0, 3, 1);
     constexpr inline const auto KMemoryRegionType_DTB               = KMemoryRegionType_DramReservedBase.DeriveSparse(0, 3, 2);
+    static_assert(KMemoryRegionType_KernelTraceBuffer.GetValue() == (0xD6 | KMemoryRegionAttr_LinearMapped | KMemoryRegionAttr_UserReadOnly));
     static_assert(KMemoryRegionType_OnMemoryBootImage.GetValue() == 0x156);
     static_assert(KMemoryRegionType_DTB.GetValue() == 0x256);
 
-    constexpr inline const auto KMemoryRegionType_KernelTraceBuffer = KMemoryRegionType_DramHeapBase.DeriveTransition(1, 3).SetAttribute(KMemoryRegionAttr_UserReadOnly);
-    static_assert(KMemoryRegionType_KernelTraceBuffer.GetValue() == (0xA6 | KMemoryRegionAttr_LinearMapped | KMemoryRegionAttr_UserReadOnly));
 
     constexpr inline const auto KMemoryRegionType_DramPoolPartition = KMemoryRegionType_DramHeapBase.DeriveAttribute(KMemoryRegionAttr_NoUserMap);
     static_assert(KMemoryRegionType_DramPoolPartition.GetValue() == (0x26 | KMemoryRegionAttr_LinearMapped | KMemoryRegionAttr_NoUserMap));
@@ -274,15 +274,15 @@ namespace ams::kern {
                                                                                                          /* UNUSED: .Derive(7, 0); */
     constexpr inline const auto KMemoryRegionType_KernelMiscMainStack      = KMemoryRegionType_KernelMiscDerivedBase.Derive(7, 1);
     constexpr inline const auto KMemoryRegionType_KernelMiscMappedDevice   = KMemoryRegionType_KernelMiscDerivedBase.Derive(7, 2);
-    constexpr inline const auto KMemoryRegionType_KernelMiscIdleStack      = KMemoryRegionType_KernelMiscDerivedBase.Derive(7, 3);
+    constexpr inline const auto KMemoryRegionType_KernelMiscExceptionStack = KMemoryRegionType_KernelMiscDerivedBase.Derive(7, 3);
     constexpr inline const auto KMemoryRegionType_KernelMiscUnknownDebug   = KMemoryRegionType_KernelMiscDerivedBase.Derive(7, 4);
                                                                                                          /* UNUSED: .Derive(7, 5); */
-    constexpr inline const auto KMemoryRegionType_KernelMiscExceptionStack = KMemoryRegionType_KernelMiscDerivedBase.Derive(7, 6);
+    constexpr inline const auto KMemoryRegionType_KernelMiscIdleStack = KMemoryRegionType_KernelMiscDerivedBase.Derive(7, 6);
     static_assert(KMemoryRegionType_KernelMiscMainStack     .GetValue() == 0xB49);
     static_assert(KMemoryRegionType_KernelMiscMappedDevice  .GetValue() == 0xD49);
-    static_assert(KMemoryRegionType_KernelMiscIdleStack     .GetValue() == 0x1349);
+    static_assert(KMemoryRegionType_KernelMiscExceptionStack.GetValue() == 0x1349);
     static_assert(KMemoryRegionType_KernelMiscUnknownDebug  .GetValue() == 0x1549);
-    static_assert(KMemoryRegionType_KernelMiscExceptionStack.GetValue() == 0x2349);
+    static_assert(KMemoryRegionType_KernelMiscIdleStack     .GetValue() == 0x2349);
 
     constexpr inline const auto KMemoryRegionType_KernelTemp = KMemoryRegionType_Kernel.Advance(2).Derive(2, 0);
     static_assert(KMemoryRegionType_KernelTemp.GetValue() == 0x31);
